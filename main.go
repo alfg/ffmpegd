@@ -36,6 +36,8 @@ type Message struct {
 // Status response to client.
 type Status struct {
 	Percent float64 `json:"percent"`
+	Speed   string  `json:"speed"`
+	FPS     float64 `json:"fps"`
 }
 
 var progressCh chan struct{}
@@ -107,6 +109,18 @@ func runEncode(input, output, payload string) {
 	}
 	close(progressCh)
 	fmt.Println(ffmpeg)
+
+	for client := range clients {
+		p := &Status{
+			Percent: 100,
+		}
+		err := client.WriteJSON(p)
+		if err != nil {
+			log.Printf("error: %w", err)
+			client.Close()
+			delete(clients, client)
+		}
+	}
 }
 
 func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
@@ -135,6 +149,8 @@ func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 				for client := range clients {
 					p := &Status{
 						Percent: pct,
+						Speed:   speed,
+						FPS:     fps,
 					}
 					fmt.Println(p)
 					err := client.WriteJSON(p)
