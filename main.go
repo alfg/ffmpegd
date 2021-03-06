@@ -8,12 +8,26 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
-	// ProgressInterval ffmpeg progress.
-	ProgressInterval = time.Second * 2
+	ProgressInterval = time.Second * 1
+	Logo             = `
+███████╗███████╗███╗   ███╗██████╗ ███████╗ ██████╗ ██████╗ 
+██╔════╝██╔════╝████╗ ████║██╔══██╗██╔════╝██╔════╝ ██╔══██╗
+█████╗  █████╗  ██╔████╔██║██████╔╝█████╗  ██║  ███╗██║  ██║
+██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
+██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
+╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
+	`
+	Banner = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
+	Usage  = `
+Usage:
+	ffmpegd [port]
+	ffmpegd version -- This version.
+	`
+
+	Version = "0.0.1"
 )
 
 var clients = make(map[*websocket.Conn]bool)
@@ -43,24 +57,34 @@ type Status struct {
 var progressCh chan struct{}
 
 func main() {
-	fmt.Println("ffmpegd")
+	printBanner()
 
+	startServer()
+}
+
+func printBanner() {
+	fmt.Println(Logo)
+	fmt.Println(Banner)
+}
+
+func startServer() {
 	http.HandleFunc("/ws", handleConnections)
-
 	go handleMessages()
 
-	log.Println("http server started on :8080")
+	fmt.Println("Server started on port :8080.")
+	fmt.Println("Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
+	fmt.Println("")
+	fmt.Printf("Waiting for connection...")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		fmt.Println("ListenAndServe: ", err)
 	}
-
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	defer ws.Close()
 
@@ -68,18 +92,18 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 
 	for {
+		fmt.Printf("\rWaiting for connection......\u001b[32mconnected!\u001b[0m")
 		var msg Message
 		// Read in a new message as JSON and map it to a Message object.
 		err := ws.ReadJSON(&msg)
 		if err != nil {
-			log.Printf("error: %v", err)
+			fmt.Printf("\rWaiting for connection...\u001b[31mdisconnected!\u001b[0m")
 			delete(clients, ws)
 			break
 		}
 		// Send the newly received message to the broadcast channel.
 		broadcast <- msg
 	}
-
 }
 
 func handleMessages() {
@@ -93,12 +117,8 @@ func handleMessages() {
 }
 
 func runEncode(input, output, payload string) {
-	input = "tears-of-steel-720p.mp4"
-	output = "out.mp4"
-
 	probe := FFProbe{}
 	probeData := probe.Run(input)
-	fmt.Println(probeData)
 
 	ffmpeg := &FFmpeg{}
 	go trackEncodeProgress(probeData, ffmpeg)
@@ -108,7 +128,6 @@ func runEncode(input, output, payload string) {
 		panic(err)
 	}
 	close(progressCh)
-	fmt.Println(ffmpeg)
 
 	for client := range clients {
 		p := &Status{
@@ -116,7 +135,7 @@ func runEncode(input, output, payload string) {
 		}
 		err := client.WriteJSON(p)
 		if err != nil {
-			log.Printf("error: %w", err)
+			fmt.Println("error: %w", err)
 			client.Close()
 			delete(clients, client)
 		}
@@ -131,6 +150,7 @@ func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 		select {
 		case <-progressCh:
 			ticker.Stop()
+			fmt.Printf("\rWaiting for next job...                                                    ")
 			return
 		case <-ticker.C:
 			currentFrame := f.Progress.Frame
@@ -143,8 +163,7 @@ func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 				pct := (float64(currentFrame) / float64(totalFrames)) * 100
 				pct = math.Round(pct*100) / 100
 
-				log.Infof("progress: %d / %d - %0.2f%%", currentFrame, totalFrames, pct)
-				log.Info(speed, fps)
+				fmt.Printf("\rEncoding... %d / %d (%0.2f%%) %s @ %0.2f", currentFrame, totalFrames, pct, speed, fps)
 
 				for client := range clients {
 					p := &Status{
@@ -152,10 +171,9 @@ func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 						Speed:   speed,
 						FPS:     fps,
 					}
-					fmt.Println(p)
 					err := client.WriteJSON(p)
 					if err != nil {
-						log.Printf("error: %w", err)
+						fmt.Println("error: %w", err)
 						client.Close()
 						delete(clients, client)
 					}

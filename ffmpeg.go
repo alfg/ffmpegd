@@ -5,13 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -82,7 +81,6 @@ func (f *FFmpeg) Run(input, output, data string) error {
 	args := parseOptions(input, output, data)
 
 	// Execute command.
-	log.Info("running FFmpeg with options: ", args)
 	f.cmd = exec.Command(ffmpegCmd, args...)
 	stdout, _ := f.cmd.StdoutPipe()
 
@@ -111,12 +109,12 @@ func (f *FFmpeg) Run(input, output, data string) error {
 
 // Cancel stops an FFmpeg job from running.
 func (f *FFmpeg) Cancel() {
-	log.Warn("killing ffmpeg process")
+	fmt.Println("killing ffmpeg process")
 	f.isCancelled = true
 	if err := f.cmd.Process.Kill(); err != nil {
-		log.Warn("failed to kill process: ", err)
+		fmt.Println("failed to kill process: ", err)
 	}
-	log.Warn("killed ffmpeg process")
+	fmt.Println("killed ffmpeg process")
 }
 
 // Version gets the ffmpeg version.
@@ -256,21 +254,6 @@ func transformOptions(opt *ffmpegOptions) []string {
 		arg := []string{"-preset", opt.Video.Preset}
 		args = append(args, arg...)
 	}
-
-	// Hardware Acceleration.
-	// if opt.Video.HardwareAcceleration == "nvenc" {
-	// 	// Replace encoder with NVidia hardware accelerated encoder.
-	// 	for i := 0; i < len(args); i++ {
-	// 		if args[i] == "libx264" {
-	// 			args[i] = "h264_nvenc"
-	// 		} else if args[i] == "libx265" {
-	// 			args[i] = "hevc_nvenc"
-	// 		}
-	// 	}
-	// } else if opt.Video.HardwareAcceleration != "off" {
-	// 	arg := []string{"-hwaccel", opt.Video.HardwareAcceleration}
-	// 	args = append(args, arg...)
-	// }
 
 	// CRF.
 	if opt.Video.Crf != 0 && opt.Video.Pass == "crf" {

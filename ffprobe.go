@@ -2,9 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const ffprobeCmd = "ffprobe"
@@ -23,12 +22,10 @@ func (f FFProbe) Run(input string) *FFProbeResponse {
 
 	// Execute command.
 	cmd := exec.Command(ffprobeCmd, args...)
-	log.Info("Running FFprobe...")
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Error(err.Error())
+		fmt.Println(err.Error())
 	}
-	// log.Info((string(stdout))
 
 	dat := &FFProbeResponse{}
 	if err := json.Unmarshal([]byte(stdout), &dat); err != nil {
