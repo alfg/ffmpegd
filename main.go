@@ -19,15 +19,15 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
+                                                      v0.0.1
 	`
-	Banner = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
-	Usage  = `
+	Version     = "0.0.1"
+	Description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
+	Usage       = `
 Usage:
 	ffmpegd [port]
 	ffmpegd version -- This version.
 	`
-
-	Version = "0.0.1"
 )
 
 var clients = make(map[*websocket.Conn]bool)
@@ -59,16 +59,19 @@ var progressCh chan struct{}
 func main() {
 	printBanner()
 
+	// HTTP/WS Server.
 	startServer()
 }
 
 func printBanner() {
 	fmt.Println(Logo)
-	fmt.Println(Banner)
+	fmt.Println(Description)
 }
 
 func startServer() {
 	http.HandleFunc("/ws", handleConnections)
+
+	// Handles incoming WS messages from client.
 	go handleMessages()
 
 	fmt.Println("Server started on port :8080.")
