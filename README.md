@@ -5,6 +5,9 @@ The goal is to provide a simple interface for sending FFmpeg jobs from the brows
 
 **Currently a work-in-progress!*
 
+## How It Works
+TODO
+
 ## Install
 ```
 $ go get -u github.com/alfg/ffmpegd
@@ -47,11 +50,13 @@ Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
 ```
 ![ffmpeg-commander](screenshot.png)
 
+## API
+TODO
 
 ## TODO
 * Support all `ffmpeg-comamnder` JSON options.
 * More CLI flags for server, ports, cwd and daemon mode.
-* Logging options and output
+* Logging levels and output
 * API documentation
 * Docker
 

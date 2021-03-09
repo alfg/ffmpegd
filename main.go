@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	ProgressInterval = time.Second * 1
-	Logo             = `
+	logo = `
 ███████╗███████╗███╗   ███╗██████╗ ███████╗ ██████╗ ██████╗ 
 ██╔════╝██╔════╝████╗ ████║██╔══██╗██╔════╝██╔════╝ ██╔══██╗
 █████╗  █████╗  ██╔████╔██║██████╔╝█████╗  ██║  ███╗██║  ██║
@@ -21,13 +20,14 @@ const (
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
                                                       v0.0.1
 	`
-	Version     = "0.0.1"
-	Description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
-	Usage       = `
+	version     = "0.0.1"
+	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
+	usage       = `
 Usage:
 	ffmpegd [port]
 	ffmpegd version -- This version.
 	`
+	progressInterval = time.Second * 1
 )
 
 var clients = make(map[*websocket.Conn]bool)
@@ -64,8 +64,8 @@ func main() {
 }
 
 func printBanner() {
-	fmt.Println(Logo)
-	fmt.Println(Description)
+	fmt.Println(logo)
+	fmt.Println(description)
 }
 
 func startServer() {
@@ -127,6 +127,7 @@ func runEncode(input, output, payload string) {
 	go trackEncodeProgress(probeData, ffmpeg)
 	err := ffmpeg.Run(input, output, payload)
 	if err != nil {
+		// fmt.Println(err)
 		close(progressCh)
 		panic(err)
 	}
@@ -147,7 +148,7 @@ func runEncode(input, output, payload string) {
 
 func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 	progressCh = make(chan struct{})
-	ticker := time.NewTicker(ProgressInterval)
+	ticker := time.NewTicker(progressInterval)
 
 	for {
 		select {
