@@ -90,7 +90,7 @@ type audioOptions struct {
 	Channel    string `json:"channel"`
 	Quality    string `json:"quality"`
 	SampleRate string `json:"sample_rate"`
-	Volume     int    `json:"volume"`
+	Volume     string `json:"volume"`
 }
 
 type filterOptions struct {
@@ -114,9 +114,9 @@ func (f *FFmpeg) Run(input, output, data string) error {
 	args := parseOptions(input, output, data)
 
 	// Execute command.
-	fmt.Println("final output: ", args)
+	// fmt.Println("final output: ", args)
 	f.cmd = exec.Command(ffmpegCmd, args...)
-	fmt.Println("OUT: ", f.cmd.String())
+	// fmt.Println("OUT: ", f.cmd.String())
 	stdout, _ := f.cmd.StdoutPipe()
 
 	// Capture stderr (if any).
@@ -262,6 +262,11 @@ func parseOptions(input, output, data string) []string {
 	// Set options from struct.
 	args = append(args, transformOptions(options)...)
 
+	// Set 2 pass output if option is set.
+	if options.Video.Pass == "2" {
+		args = append(args, set2Pass(&args)...)
+	}
+
 	// Add output arg last.
 	args = append(args, output)
 	return args
@@ -284,7 +289,6 @@ func setFormatFlags(opt formatOptions) []string {
 }
 
 func setVideoFlags(opt videoOptions) []string {
-	fmt.Println("setVideoFlags: ", opt)
 	args := []string{}
 
 	// Video codec.
@@ -370,6 +374,80 @@ func setVideoFilters(vopt videoOptions, opt filterOptions) string {
 		args = append(args, []string{"setpts=" + vopt.Speed}...)
 	}
 
+	// Scale.
+	scaleFilters := []string{}
+	if vopt.Size != "" && vopt.Size != "source" {
+		var arg string
+		if vopt.Size == "custom" {
+			arg = "scale=" + vopt.Width + ":" + vopt.Height
+		} else if vopt.Format == "widescreen" {
+			arg = "scale=" + vopt.Size + ":-1"
+		} else {
+			arg = "scale=-1:" + vopt.Size
+		}
+		scaleFilters = append(scaleFilters, arg)
+	}
+
+	if vopt.Scaling != "" && vopt.Scaling != "auto" {
+		arg := "flags=" + vopt.Scaling
+		scaleFilters = append(scaleFilters, arg)
+	}
+
+	// Add scale filters to vf flags if provided.
+	if len(scaleFilters) > 0 {
+		scaleFiltersStr := strings.Join(scaleFilters, ":")
+		args = append(args, scaleFiltersStr)
+	}
+
+	// More filters.
+	if opt.Deband {
+		args = append(args, "deband")
+	}
+
+	if opt.Deshake {
+		args = append(args, "deshake")
+	}
+
+	if opt.Deflicker {
+		args = append(args, "deflicker")
+	}
+
+	if opt.Dejudder {
+		args = append(args, "dejudder")
+	}
+
+	if opt.Denoise != "none" {
+		var arg string
+
+		switch opt.Denoise {
+		case "light":
+			arg = "removegrain=22"
+		case "medium":
+			arg = "vaguedenoiser=threshold=3:method=soft:nsteps=5"
+		case "heavy":
+			arg = "vaguedenoiser=threshold=6:method=soft:nsteps=5"
+		default:
+			arg = "removegrain=0"
+		}
+		args = append(args, arg)
+	}
+
+	if opt.Deinterlace != "none" {
+		var arg string
+
+		switch opt.Deinterlace {
+		case "frame":
+			arg = "yadif=0:-1:0"
+		case "field":
+			arg = "yadif=1:-1:0"
+		case "frame_nospatial":
+			arg = "yadif=2:-1:0"
+		case "field_nospatial":
+			arg = "yadif=3:-1:0"
+		}
+		args = append(args, arg)
+	}
+
 	// EQ filters.
 	eq := []string{}
 
@@ -424,6 +502,35 @@ func setAudioFlags(opt audioOptions) []string {
 	return args
 }
 
+func setAudioFilters(opt audioOptions, filter filterOptions) string {
+	args := []string{}
+
+	if opt.Volume != "" && opt.Volume != "100" {
+		v, _ := strconv.ParseFloat(opt.Volume, 64)
+		args = append(args, []string{"volume=" + fmt.Sprintf("%.2f", v/100)}...)
+	}
+
+	if filter.Acontrast != "" && filter.Acontrast != "33" {
+		a, _ := strconv.ParseFloat(filter.Acontrast, 64)
+		args = append(args, []string{"acontrast=" + fmt.Sprintf("%.2f", a/100)}...)
+	}
+
+	argsStr := strings.Join(args, ",")
+	return argsStr
+}
+
+func set2Pass(args *[]string) []string {
+	op := "NUL &&" // Windows.
+	cpy := make([]string, len(*args))
+	copy(cpy, *args)
+
+	*args = append(*args, []string{"-pass 1", "-f null", op}...)
+	cpy = append([]string{"ffmpeg"}, cpy...)
+	cpy = append(cpy, []string{"-pass 2"}...)
+
+	return cpy
+}
+
 // transformOptions converts the ffmpegOptions{} struct and converts into
 // a slice of ffmpeg options to be passed to exec.Command arguments.
 func transformOptions(opt *ffmpegOptions) []string {
@@ -439,7 +546,6 @@ func transformOptions(opt *ffmpegOptions) []string {
 	args = append(args, setVideoFlags(opt.Video)...)
 
 	// Video Filters.
-	// vf := []string{"-vf"}
 	vf := []string{"-vf", setVideoFilters(opt.Video, opt.Filter)}
 
 	// Only push -vf flag if there are video filter arguments.
@@ -448,8 +554,15 @@ func transformOptions(opt *ffmpegOptions) []string {
 	}
 
 	// Audio flags.
-	// args = append(args, setAudioFlags(opt.Audio)...)
-	// fmt.Println(args)
+	args = append(args, setAudioFlags(opt.Audio)...)
+
+	// Audio filters.
+	af := []string{"-af", setAudioFilters(opt.Audio, opt.Filter)}
+
+	// Only push -af flag if there are audio filter arguments.
+	if af[1] != "" {
+		args = append(args, af...)
+	}
 
 	extra := []string{
 		"-y",

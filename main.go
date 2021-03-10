@@ -74,8 +74,9 @@ func startServer() {
 	// Handles incoming WS messages from client.
 	go handleMessages()
 
-	fmt.Println("Server started on port :8080.")
-	fmt.Println("Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
+	fmt.Println("  Server started on port :8080.")
+	fmt.Println("  - Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
+	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in options")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
 	err := http.ListenAndServe(":8080", nil)
@@ -167,7 +168,7 @@ func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
 				pct := (float64(currentFrame) / float64(totalFrames)) * 100
 				pct = math.Round(pct*100) / 100
 
-				fmt.Printf("\rEncoding... %d / %d (%0.2f%%) %s @ %0.2f", currentFrame, totalFrames, pct, speed, fps)
+				fmt.Printf("\rEncoding... %d / %d (%0.2f%%) %s @ %0.2f fps", currentFrame, totalFrames, pct, speed, fps)
 
 				for client := range clients {
 					p := &Status{
