@@ -30,14 +30,15 @@ Usage:
 	progressInterval = time.Second * 1
 )
 
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan Message)
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
+var (
+	clients   = make(map[*websocket.Conn]bool)
+	broadcast = make(chan Message)
+	upgrader  = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+)
 
 // Message payload from client.
 type Message struct {
@@ -52,11 +53,13 @@ type Status struct {
 	Percent float64 `json:"percent"`
 	Speed   string  `json:"speed"`
 	FPS     float64 `json:"fps"`
+	Err     string  `json:"err"`
 }
 
 var progressCh chan struct{}
 
 func main() {
+	// CLI Banner.
 	printBanner()
 
 	// HTTP/WS Server.
@@ -74,9 +77,9 @@ func startServer() {
 	// Handles incoming WS messages from client.
 	go handleMessages()
 
-	fmt.Println("  Server started on port :8080.")
+	fmt.Println("  Server started on port \u001b[33m:8080\u001b[0m.")
 	fmt.Println("  - Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
-	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in options")
+	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
 	err := http.ListenAndServe(":8080", nil)
@@ -122,21 +125,41 @@ func handleMessages() {
 
 func runEncode(input, output, payload string) {
 	probe := FFProbe{}
-	probeData := probe.Run(input)
+	probeData, err := probe.Run(input)
+	if err != nil {
+		sendError(err)
+		return
+	}
 
 	ffmpeg := &FFmpeg{}
 	go trackEncodeProgress(probeData, ffmpeg)
-	err := ffmpeg.Run(input, output, payload)
+	err = ffmpeg.Run(input, output, payload)
+
+	// If we get an error back from ffmpeg, send an error ws message to clients.
 	if err != nil {
-		// fmt.Println(err)
 		close(progressCh)
-		panic(err)
+		sendError(err)
+		return
 	}
 	close(progressCh)
 
 	for client := range clients {
 		p := &Status{
 			Percent: 100,
+		}
+		err := client.WriteJSON(p)
+		if err != nil {
+			fmt.Println("error: %w", err)
+			client.Close()
+			delete(clients, client)
+		}
+	}
+}
+
+func sendError(err error) {
+	for client := range clients {
+		p := &Status{
+			Err: err.Error(),
 		}
 		err := client.WriteJSON(p)
 		if err != nil {

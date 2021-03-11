@@ -3,7 +3,7 @@ An FFmpeg server with a websocket API for [FFmpeg Commander](https://github.com/
 
 The goal is to provide a simple interface for sending FFmpeg jobs from the browser (and other supported clients in the future) while reporting realtime progress details.
 
-**Currently a work-in-progress!*
+**Currently a work-in-progress! Bugs and breaking changes are expected.*
 
 ## How It Works
 TODO
@@ -57,8 +57,12 @@ TODO
 * Support all `ffmpeg-comamnder` JSON options.
 * More CLI flags for server, ports, cwd and daemon mode.
 * Logging levels and output
+* More error handling
 * API documentation
 * Docker
+* Test Client Demo
+* Tests
+* Cross-compile binaries for releases
 
 ## License
 MIT

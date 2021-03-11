@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os/exec"
+	"strings"
 )
 
 const ffprobeCmd = "ffprobe"
@@ -12,26 +13,29 @@ const ffprobeCmd = "ffprobe"
 type FFProbe struct{}
 
 // Run runs an FFProbe command.
-func (f FFProbe) Run(input string) *FFProbeResponse {
+func (f FFProbe) Run(input string) (*FFProbeResponse, error) {
 	args := []string{
 		"-i", input,
 		"-show_streams",
 		"-print_format", "json",
-		"-v", "quiet",
+		"-v", "error",
 	}
 
 	// Execute command.
 	cmd := exec.Command(ffprobeCmd, args...)
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(err.Error())
+		// Cleanup ffprobe error output.
+		replacer := strings.NewReplacer("{", "", "}", "")
+		stdout := strings.TrimSpace(replacer.Replace(string(stdout)))
+		return nil, errors.New(stdout)
 	}
 
 	dat := &FFProbeResponse{}
 	if err := json.Unmarshal([]byte(stdout), &dat); err != nil {
 		panic(err)
 	}
-	return dat
+	return dat, nil
 }
 
 // FFProbeResponse defines the response from ffprobe.

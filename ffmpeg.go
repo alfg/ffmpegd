@@ -114,19 +114,17 @@ func (f *FFmpeg) Run(input, output, data string) error {
 	args := parseOptions(input, output, data)
 
 	// Execute command.
-	// fmt.Println("final output: ", args)
 	f.cmd = exec.Command(ffmpegCmd, args...)
-	// fmt.Println("OUT: ", f.cmd.String())
+	// fmt.Println("generated output: ", f.cmd.String())
 	stdout, _ := f.cmd.StdoutPipe()
 
 	// Capture stderr (if any).
 	var stderr bytes.Buffer
 	f.cmd.Stderr = &stderr
-	// f.cmd.Run()
-	// if err != nil {
-	// 	fmt.Println("ERR: ", stderr.String())
-	// }
-	f.cmd.Start()
+	err := f.cmd.Start()
+	if err != nil {
+		return err
+	}
 
 	// Send progress updates.
 	go f.trackProgress()
@@ -134,13 +132,13 @@ func (f *FFmpeg) Run(input, output, data string) error {
 	// Update progress struct.
 	f.updateProgress(stdout)
 
-	err := f.cmd.Wait()
+	err = f.cmd.Wait()
 	if err != nil {
 		if f.isCancelled {
 			return errors.New("cancelled")
 		}
 		f.finish()
-		return err
+		return errors.New(stderr.String())
 	}
 	f.finish()
 	return nil
@@ -223,8 +221,6 @@ func (f *FFmpeg) trackProgress() {
 		case <-f.Progress.quit:
 			ticker.Stop()
 			return
-		case <-ticker.C:
-			// log.Info((f.Progress)
 		}
 	}
 }
