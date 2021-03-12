@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -36,6 +37,18 @@ func (f FFProbe) Run(input string) (*FFProbeResponse, error) {
 		panic(err)
 	}
 	return dat, nil
+}
+
+// Version gets the ffprobe version.
+func (f *FFProbe) Version() (string, error) {
+	out, err := exec.Command(ffprobeCmd, "-version").Output()
+	if err != nil {
+		return "", errors.New("ffprobe not available on $PATH")
+	}
+	str := strings.Split(string(out), "\n")
+	r, _ := regexp.Compile(`(\d+(\.\d+){2})`)
+	version := r.FindString(str[0])
+	return version, nil
 }
 
 // FFProbeResponse defines the response from ffprobe.

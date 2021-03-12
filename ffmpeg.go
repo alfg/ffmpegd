@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -155,9 +156,15 @@ func (f *FFmpeg) Cancel() {
 }
 
 // Version gets the ffmpeg version.
-func (f *FFmpeg) Version() string {
-	out, _ := exec.Command(ffmpegCmd, "-version").Output()
-	return string(out)
+func (f *FFmpeg) Version() (string, error) {
+	out, err := exec.Command(ffmpegCmd, "-version").Output()
+	if err != nil {
+		return "", errors.New("ffmpeg not available on $PATH")
+	}
+	str := strings.Split(string(out), "\n")
+	r, _ := regexp.Compile(`(\d+(\.\d+){2})`)
+	version := r.FindString(str[0])
+	return version, nil
 }
 
 func (f *FFmpeg) updateProgress(stdout io.ReadCloser) {

@@ -38,6 +38,7 @@ var (
 			return true
 		},
 	}
+	progressCh chan struct{}
 )
 
 // Message payload from client.
@@ -56,11 +57,17 @@ type Status struct {
 	Err     string  `json:"err"`
 }
 
-var progressCh chan struct{}
-
 func main() {
 	// CLI Banner.
 	printBanner()
+
+	// Check if FFmpeg/FFprobe are available.
+	err := verifyFFmpeg()
+	if err != nil {
+		fmt.Println("\u001b[31m" + err.Error() + "\u001b[0m")
+		fmt.Println("\u001b[31mPlease ensure FFmpeg and FFprobe are installed and available on $PATH.\u001b[0m")
+		return
+	}
 
 	// HTTP/WS Server.
 	startServer()
@@ -121,6 +128,23 @@ func handleMessages() {
 			runEncode(msg.Input, msg.Output, msg.Payload)
 		}
 	}
+}
+
+func verifyFFmpeg() error {
+	ffmpeg := &FFmpeg{}
+	version, err := ffmpeg.Version()
+	if err != nil {
+		return err
+	}
+	fmt.Println("  Checking FFmpeg version....\u001b[32m" + version + "\u001b[0m")
+
+	ffprobe := &FFProbe{}
+	version, err = ffprobe.Version()
+	if err != nil {
+		return err
+	}
+	fmt.Println("  Checking FFprobe version...\u001b[32m" + version + "\u001b[0m\n")
+	return nil
 }
 
 func runEncode(input, output, payload string) {
