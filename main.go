@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -18,10 +22,10 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.1
+                                                      v0.0.2
 	`
-	version     = "0.0.1"
-	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for ffmpeg-commander.\n"
+	version     = "0.0.2"
+	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
 	ffmpegd [port]
@@ -57,6 +61,18 @@ type Status struct {
 	Err     string  `json:"err"`
 }
 
+// FilesResponse http response for files endpoint.
+type FilesResponse struct {
+	Cwd     string   `json:"cwd"`
+	Folders []string `json:"folders"`
+	Files   []file   `json:"files"`
+}
+
+type file struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+}
+
 func main() {
 	// CLI Banner.
 	printBanner()
@@ -80,16 +96,17 @@ func printBanner() {
 
 func startServer() {
 	http.HandleFunc("/ws", handleConnections)
+	http.HandleFunc("/files", handleFiles)
 
 	// Handles incoming WS messages from client.
 	go handleMessages()
 
 	fmt.Println("  Server started on port \u001b[33m:8080\u001b[0m.")
 	fmt.Println("  - Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
-	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options")
+	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options.")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe("127.0.0.1:8080", nil)
 	if err != nil {
 		fmt.Println("ListenAndServe: ", err)
 	}
@@ -118,6 +135,45 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		// Send the newly received message to the broadcast channel.
 		broadcast <- msg
 	}
+}
+
+func handleFiles(w http.ResponseWriter, r *http.Request) {
+	prefix := r.URL.Query().Get("prefix")
+	if prefix == "" {
+		prefix = "."
+	}
+	prefix = strings.TrimSuffix(prefix, "/")
+
+	wd, _ := os.Getwd()
+	resp := &FilesResponse{
+		Cwd:     wd,
+		Folders: []string{},
+		Files:   []file{},
+	}
+
+	files, _ := ioutil.ReadDir(prefix)
+	for _, f := range files {
+		if f.IsDir() {
+			if prefix == "." {
+				resp.Folders = append(resp.Folders, f.Name()+"/")
+			} else {
+				resp.Folders = append(resp.Folders, prefix+"/"+f.Name()+"/")
+			}
+		} else {
+			var obj file
+			if prefix == "./" {
+				obj.Name = prefix + f.Name()
+			} else {
+				obj.Name = prefix + "/" + f.Name()
+			}
+			obj.Size = f.Size()
+			resp.Files = append(resp.Files, obj)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func handleMessages() {
