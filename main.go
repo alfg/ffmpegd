@@ -22,9 +22,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.2
+                                                      v0.0.3
 	`
-	version     = "0.0.2"
+	version     = "0.0.3"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -97,6 +97,7 @@ func printBanner() {
 func startServer() {
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/files", handleFiles)
+	http.Handle("/", http.FileServer(http.Dir("./")))
 
 	// Handles incoming WS messages from client.
 	go handleMessages()
