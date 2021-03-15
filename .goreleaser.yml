@@ -19,6 +19,3 @@ archives:
     files:
       - README.md
       - LICENSE
-dockers:
-  - image_templates:
-    - alfg/ffmpegd
