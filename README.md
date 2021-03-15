@@ -16,11 +16,24 @@ See [Usage](#Usage) for more details.
 ```
 
 ## Install
+### Go
 ```
 $ go get -u github.com/alfg/ffmpegd
 ```
 
-Docker, Homebrew, and release binaries coming soon.
+### Docker
+A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) installed:
+
+```
+$ docker run -it -p 8080:8080 -v /tmp/:/home ffmpegd
+```
+
+Or using the `docker-compose` example:
+```
+$ docker-compose up ffmpegd
+```
+
+Homebrew package coming soon.
 
 ## Usage
 * [ffmpeg](https://www.ffmpeg.org/download.html) must be installed and available on your `$PATH`.
@@ -70,10 +83,8 @@ TBD
 * Logging levels and output
 * More error handling
 * API documentation
-* Docker
 * Test Client Demo
 * Tests
-* Cross-compile binaries for releases
 
 ## License
 MIT

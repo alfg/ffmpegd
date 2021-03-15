@@ -22,9 +22,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.3
+                                                      v0.0.4
 	`
-	version     = "0.0.3"
+	version     = "0.0.4"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -35,11 +35,21 @@ Usage:
 )
 
 var (
+	allowedOrigins = []string{
+		"http://localhost:8080",
+		"http://localhost:8081",
+		"https://alfg.github.io",
+	}
 	clients   = make(map[*websocket.Conn]bool)
 	broadcast = make(chan Message)
 	upgrader  = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true
+			for _, origin := range allowedOrigins {
+				if r.Header.Get("Origin") == origin {
+					return true
+				}
+			}
+			return false
 		},
 	}
 	progressCh chan struct{}
@@ -107,7 +117,7 @@ func startServer() {
 	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options.")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
-	err := http.ListenAndServe("127.0.0.1:8080", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println("ListenAndServe: ", err)
 	}
@@ -116,7 +126,8 @@ func startServer() {
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("\rWaiting for connection...\u001b[31m websocket connection failed!\u001b[0m")
+		return
 	}
 	defer ws.Close()
 
@@ -173,8 +184,16 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	cors(&w, r)
 	json.NewEncoder(w).Encode(resp)
+}
+
+func cors(w *http.ResponseWriter, r *http.Request) {
+	for _, origin := range allowedOrigins {
+		if r.Header.Get("Origin") == origin {
+			(*w).Header().Set("Access-Control-Allow-Origin", origin)
+		}
+	}
 }
 
 func handleMessages() {
