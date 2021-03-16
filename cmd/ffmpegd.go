@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alfg/ffmpegd"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,9 +23,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.4
+                                                      v0.0.5
 	`
-	version     = "0.0.4"
+	version     = "0.0.5"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -207,14 +208,14 @@ func handleMessages() {
 }
 
 func verifyFFmpeg() error {
-	ffmpeg := &FFmpeg{}
+	ffmpeg := &ffmpegd.FFmpeg{}
 	version, err := ffmpeg.Version()
 	if err != nil {
 		return err
 	}
 	fmt.Println("  Checking FFmpeg version....\u001b[32m" + version + "\u001b[0m")
 
-	ffprobe := &FFProbe{}
+	ffprobe := &ffmpegd.FFProbe{}
 	version, err = ffprobe.Version()
 	if err != nil {
 		return err
@@ -224,14 +225,14 @@ func verifyFFmpeg() error {
 }
 
 func runEncode(input, output, payload string) {
-	probe := FFProbe{}
+	probe := ffmpegd.FFProbe{}
 	probeData, err := probe.Run(input)
 	if err != nil {
 		sendError(err)
 		return
 	}
 
-	ffmpeg := &FFmpeg{}
+	ffmpeg := &ffmpegd.FFmpeg{}
 	go trackEncodeProgress(probeData, ffmpeg)
 	err = ffmpeg.Run(input, output, payload)
 
@@ -270,7 +271,7 @@ func sendError(err error) {
 	}
 }
 
-func trackEncodeProgress(p *FFProbeResponse, f *FFmpeg) {
+func trackEncodeProgress(p *ffmpegd.FFProbeResponse, f *ffmpegd.FFmpeg) {
 	progressCh = make(chan struct{})
 	ticker := time.NewTicker(progressInterval)
 

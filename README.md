@@ -21,6 +21,10 @@ See [Usage](#Usage) for more details.
 $ go get -u github.com/alfg/ffmpegd
 ```
 
+### Download
+Release binaries for your platform at:
+https://github.com/alfg/ffmpegd/releases
+
 ### Docker
 A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) installed:
 
@@ -77,8 +81,13 @@ Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
 ## API
 TBD
 
+## Develop
+```
+go build -v cmd/ffmpegd.go
+./ffmpegd
+```
+
 ## TODO
-* Support all `ffmpeg-comamnder` JSON options.
 * More CLI flags for server, ports, cwd and daemon mode.
 * Logging levels and output
 * More error handling
