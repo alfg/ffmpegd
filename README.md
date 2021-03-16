@@ -3,6 +3,11 @@
 
 **Currently a work-in-progress! Bugs and breaking changes are expected.*
 
+[![GoDoc](https://godoc.org/github.com/alfg/ffmpegd?status.svg)](https://godoc.org/github.com/alfg/ffmpegd)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alfg/ffmpegd)](https://goreportcard.com/report/github.com/alfg/ffmpegd)
+[![Docker Pulls](https://img.shields.io/docker/pulls/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/)
+[![Docker Automated build](https://img.shields.io/docker/automated/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/builds/)
+
 ## How It Works
 `ffmpegd` connects [FFmpeg Commander](https://alfg.github.io/ffmpeg-commander) to [ffmpeg](https://www.ffmpeg.org/) by providing a websocket server to send encode tasks and receive realtime progress updates back to the browser. This allows using `ffmpeg-commander` as a GUI for `ffmpeg`.
 
@@ -26,10 +31,10 @@ Release binaries for your platform at:
 https://github.com/alfg/ffmpegd/releases
 
 ### Docker
-A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) installed:
+A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) build installed:
 
 ```
-$ docker run -it -p 8080:8080 -v /tmp/:/home ffmpegd
+$ docker run -it -p 8080:8080 -v /tmp/:/home alfg/ffmpegd
 ```
 
 Or using the `docker-compose` example:
@@ -37,7 +42,8 @@ Or using the `docker-compose` example:
 $ docker-compose up ffmpegd
 ```
 
-Homebrew package coming soon.
+### Homebrew
+TBD
 
 ## Usage
 * [ffmpeg](https://www.ffmpeg.org/download.html) must be installed and available on your `$PATH`.
@@ -63,7 +69,7 @@ $ ffmpegd
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝
-                                                      v0.0.1
+                                                      v0.0.4
 
 [ffmpegd] - websocket server for ffmpeg-commander.
 
