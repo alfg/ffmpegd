@@ -37,6 +37,11 @@ A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ff
 $ docker run -it -p 8080:8080 -v /tmp/:/home alfg/ffmpegd
 ```
 
+Or via GitHub Container Registry:
+```
+$ docker run -it -p 8080:8080 -v /tmp/:/home ghcr.io/alfg/ffmpegd
+```
+
 Or using the `docker-compose` example:
 ```
 $ docker-compose up ffmpegd
@@ -94,7 +99,6 @@ go build -v cmd/ffmpegd.go
 ```
 
 ## TODO
-* More CLI flags for server, ports, cwd and daemon mode.
 * Logging levels and output
 * More error handling
 * API documentation

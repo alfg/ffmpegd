@@ -23,22 +23,24 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.5
+                                                      v0.0.6
 	`
-	version     = "0.0.5"
+	version     = "ffmpegd version 0.0.6"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
-	ffmpegd [port]
-	ffmpegd version -- This version.
+  ffmpegd            Run server.
+  ffmpegd [port]     Run server on port.
+  ffmpegd version    Print version.
+  ffmpegd help       This help text.
 	`
 	progressInterval = time.Second * 1
 )
 
 var (
+	port           = "8080"
 	allowedOrigins = []string{
-		"http://localhost:8080",
-		"http://localhost:8081",
+		"http://localhost:" + port,
 		"https://alfg.github.io",
 	}
 	clients   = make(map[*websocket.Conn]bool)
@@ -85,6 +87,8 @@ type file struct {
 }
 
 func Run() {
+	parseArgs()
+
 	// CLI Banner.
 	printBanner()
 
@@ -100,6 +104,27 @@ func Run() {
 	startServer()
 }
 
+func parseArgs() {
+	args := os.Args
+
+	// Use defaults if no args are set.
+	if len(args) == 1 {
+		return
+	}
+
+	// Print version, help or set port.
+	if args[1] == "version" || args[1] == "-v" {
+		fmt.Println(version)
+		os.Exit(1)
+	} else if args[1] == "help" || args[1] == "-h" {
+		fmt.Println(usage)
+		os.Exit(1)
+	} else if _, err := strconv.Atoi(args[1]); err == nil {
+		port = args[1]
+	}
+
+}
+
 func printBanner() {
 	fmt.Println(logo)
 	fmt.Println(description)
@@ -113,12 +138,12 @@ func startServer() {
 	// Handles incoming WS messages from client.
 	go handleMessages()
 
-	fmt.Println("  Server started on port \u001b[33m:8080\u001b[0m.")
+	fmt.Println("  Server started on port \u001b[33m:" + port + "\u001b[0m.")
 	fmt.Println("  - Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
 	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options.")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		fmt.Println("ListenAndServe: ", err)
 	}
