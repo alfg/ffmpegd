@@ -1,3 +1,4 @@
 *.exe
 *.mp4
 *.temp
+!demo/tears-of-steel-5s.mp4

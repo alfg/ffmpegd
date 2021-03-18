@@ -74,7 +74,7 @@ $ ffmpegd
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝
-                                                      v0.0.4
+                                                      v0.0.7
 
 [ffmpegd] - websocket server for ffmpeg-commander.
 
@@ -89,20 +89,17 @@ Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
 ```
 ![ffmpeg-commander](screenshot.png)
 
-## API
-TBD
+## WebSocket Demo
+See [demo](demo/) for a websocket client example.
 
 ## Develop
 ```
-go build -v cmd/ffmpegd.go
+go build -v
 ./ffmpegd
 ```
 
 ## TODO
 * Logging levels and output
-* More error handling
-* API documentation
-* Test Client Demo
 * Tests
 
 ## License

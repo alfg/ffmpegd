@@ -23,9 +23,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.6
+                                                      v0.0.7
 	`
-	version     = "ffmpegd version 0.0.6"
+	version     = "ffmpegd version 0.0.7"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -71,7 +71,7 @@ type Status struct {
 	Percent float64 `json:"percent"`
 	Speed   string  `json:"speed"`
 	FPS     float64 `json:"fps"`
-	Err     string  `json:"err"`
+	Err     string  `json:"err,omitempty"`
 }
 
 // FilesResponse http response for files endpoint.

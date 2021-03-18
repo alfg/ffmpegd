@@ -57,8 +57,8 @@ type ffmpegOptions struct {
 type formatOptions struct {
 	Container string `json:"container"`
 	Clip      bool   `json:"clip"`
-	StartTime string `json:"start_time"`
-	StopTime  string `json:"stop_time"`
+	StartTime string `json:"startTime"`
+	StopTime  string `json:"stopTime"`
 }
 
 type videoOptions struct {

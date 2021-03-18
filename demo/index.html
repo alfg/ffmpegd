@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+  <meta charset="utf-8" />
+  <title>WebSocket Test Client</title>
+  <style>
+      .controls input,
+      .controls textarea {
+          display: block;
+          margin: 5px 0;
+          width: 400px;
+      }
+  </style>
+  <body>
+    <h1>WebSocket Test Client</h1>
+
+    <div class="controls">
+        <label for="input">Input</label>
+        <input id="input" value="./demo/tears-of-steel-5s.mp4" />
+
+        <label for="output">Output</label>
+        <input id="output" value="./demo/output.mp4" />
+
+        <label for="payload">Payload</label>
+        <textarea id="payload" rows="6"></textarea>
+        <button id="submit">Submit</button>
+    </div>
+
+    <h4>Log</h4>
+    <div id="log"></div>
+
+    <script language="javascript" type="text/javascript">
+        var wsUri = "ws://localhost:8080/ws";
+        var log;
+        var payload = {
+            "format": {
+                "container": "mp4",
+                "clip": false
+            },
+            "video": {
+                "codec": "libx264",
+                "preset": "veryslow",
+                "pass": "1",
+                "crf": 23,
+                "pixel_format": "auto",
+                "frame_rate": "auto",
+                "speed": "auto",
+                "tune": "none",
+                "profile": "none",
+                "level": "none",
+                "faststart": false,
+                "size": "source",
+                "width": "1080",
+                "height": "1920",
+                "format": "widescreen",
+                "aspect": "auto",
+                "scaling": "auto",
+                "codec_options": ""
+            },
+            "audio": {
+                "codec": "copy",
+                "channel": "source",
+                "quality": "auto",
+                "sampleRate": "auto",
+                "volume": "100"
+            },
+            "filter": {
+                "deband": false,
+                "deshake": false,
+                "deflicker": false,
+                "dejudder": false,
+                "denoise": "none",
+                "deinterlace": "none",
+                "brightness": "0",
+                "contrast": "1",
+                "saturation": "0",
+                "gamma": "0",
+                "acontrast": "33"
+            }
+        };
+
+        function init() {
+            document.getElementById("payload").textContent = JSON.stringify(payload, null, 2);
+            document.getElementById("submit").addEventListener('click', onSubmit);
+            log = document.getElementById("log");
+            startWebSocket();
+        }
+
+        function startWebSocket() {
+            websocket = new WebSocket(wsUri);
+            websocket.onopen = function(evt) { onOpen(evt) };
+            websocket.onclose = function(evt) { onClose(evt) };
+            websocket.onmessage = function(evt) { onMessage(evt) };
+            websocket.onerror = function(evt) { onError(evt) };
+        }
+
+        function onOpen(evt) {
+            writeToScreen("CONNECTED");
+        }
+
+        function onClose(evt) {
+            writeToScreen("DISCONNECTED");
+        }
+
+        function onMessage(evt) {
+            writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>');
+        }
+
+        function onError(evt) {
+            writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+        }
+
+        function onSubmit(evt) {
+            var input = document.getElementById("input").value;
+            var output = document.getElementById("output").value;
+            var payload = document.getElementById("payload").value;
+            sendPayload(input, output, payload);
+        }
+
+        function sendPayload(input, output, payload) {
+            writeToScreen("SENT: " + JSON.stringify({ type: 'encode', input: input, output: output, payload: payload }));
+            websocket.send(JSON.stringify({
+                type: 'encode',
+                input: input,
+                output: output,
+                payload: payload
+            }));
+        }
+
+        function writeToScreen(message) {
+            var pre = document.createElement("p");
+            pre.style.wordWrap = "break-word";
+            pre.innerHTML = message;
+            log.appendChild(pre);
+        }
+
+        window.addEventListener("load", init, false);
+    </script>
+  </body>
+</html>
