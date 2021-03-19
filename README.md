@@ -7,6 +7,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/alfg/ffmpegd)](https://goreportcard.com/report/github.com/alfg/ffmpegd)
 [![Docker Pulls](https://img.shields.io/docker/pulls/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/)
 [![Docker Automated build](https://img.shields.io/docker/automated/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/builds/)
+[![Docker Image Push](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml)
+[![goreleaser](https://github.com/alfg/ffmpegd/actions/workflows/release.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/release.yml)
 
 ## How It Works
 `ffmpegd` connects [FFmpeg Commander](https://alfg.github.io/ffmpeg-commander) to [ffmpeg](https://www.ffmpeg.org/) by providing a websocket server to send encode tasks and receive realtime progress updates back to the browser. This allows using `ffmpeg-commander` as a GUI for `ffmpeg`.

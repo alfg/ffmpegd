@@ -1,5 +1,9 @@
 # WebSocket Client Demo
-To run this demo, start `ffmpegd` and load `http://localhost:8080/demo` in your browser.
+To run this demo, build and start `ffmpegd` and load `http://localhost:8080/demo` in your browser.
+
+```
+go build -v && ./ffmpegd
+```
 
 http://localhost:8080/demo/
 
