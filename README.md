@@ -100,9 +100,13 @@ go build -v
 ./ffmpegd
 ```
 
+#### Tests
+```
+go test ./...
+```
+
 ## TODO
 * Logging levels and output
-* Tests
 
 ## License
 MIT
