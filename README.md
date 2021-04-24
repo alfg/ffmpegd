@@ -5,8 +5,11 @@
 
 [![GoDoc](https://godoc.org/github.com/alfg/ffmpegd?status.svg)](https://godoc.org/github.com/alfg/ffmpegd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alfg/ffmpegd)](https://goreportcard.com/report/github.com/alfg/ffmpegd)
+
 [![Docker Pulls](https://img.shields.io/docker/pulls/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/)
 [![Docker Automated build](https://img.shields.io/docker/automated/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/builds/)
+
+[![Go](https://github.com/alfg/ffmpegd/actions/workflows/go.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/go.yml)
 [![Docker Image Push](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml)
 [![goreleaser](https://github.com/alfg/ffmpegd/actions/workflows/release.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/release.yml)
 
