@@ -23,9 +23,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.7
+                                                      v0.0.8
 	`
-	version     = "ffmpegd version 0.0.7"
+	version     = "ffmpegd version 0.0.8"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -42,6 +42,7 @@ var (
 	allowedOrigins = []string{
 		"http://localhost:" + port,
 		"https://alfg.github.io",
+		"https://alfg.dev",
 	}
 	clients   = make(map[*websocket.Conn]bool)
 	broadcast = make(chan Message)
