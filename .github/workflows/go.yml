@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install ffmpeg
-      run: sudo apt-get install ffmpeg
+      run: sudo apt-get update -y && sudo apt-get install ffmpeg
 
     - uses: actions/checkout@v2
 
