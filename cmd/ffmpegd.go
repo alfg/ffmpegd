@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -190,7 +191,7 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 		Files:   []file{},
 	}
 
-	files, _ := ioutil.ReadDir(prefix)
+	files, _ := ioutil.ReadDir(cleanPath(prefix))
 	for _, f := range files {
 		if f.IsDir() {
 			if prefix == "." {
@@ -213,6 +214,19 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	cors(&w, r)
 	json.NewEncoder(w).Encode(resp)
+}
+
+func cleanPath(path string) string {
+	// Clean path to  make safe for use with filepath.Join.
+	if path == "" {
+		return ""
+	}
+	path = filepath.Clean(path)
+	if !filepath.IsAbs(path) {
+		path = filepath.Clean(string(os.PathSeparator) + path)
+		path, _ = filepath.Rel(string(os.PathSeparator), path)
+	}
+	return filepath.Clean(path)
 }
 
 func cors(w *http.ResponseWriter, r *http.Request) {
