@@ -28,7 +28,7 @@ See [Usage](#Usage) for more details.
 ## Install
 ### Go
 ```
-$ go get -u github.com/alfg/ffmpegd
+$ go install github.com/alfg/ffmpegd@latest
 ```
 
 ### Download
