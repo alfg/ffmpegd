@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@master
     - name: Build the Docker image
       run: |
-        docker login ghcr.io --username $GITHUB_ACTOR --password ${{ secrets.CR_TOKEN }}
+        docker login ghcr.io --username $GITHUB_ACTOR --password ${{ secrets.GITHUB_TOKEN }}
         docker build . --file Dockerfile --tag ghcr.io/alfg/ffmpegd:${GITHUB_REF/refs\/tags\//} --tag ghcr.io/alfg/ffmpegd:latest
         docker push ghcr.io/alfg/ffmpegd:${GITHUB_REF/refs\/tags\//}
         docker push ghcr.io/alfg/ffmpegd:latest
