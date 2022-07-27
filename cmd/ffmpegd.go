@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -191,9 +190,7 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 		Files:   []file{},
 	}
 
-	base, _ := filepath.Abs(".")
-	cleaned := filepath.Join(base, cleanPath(prefix))
-	files, _ := ioutil.ReadDir(cleaned)
+	files, _ := os.ReadDir(cleanPath(prefix))
 	for _, f := range files {
 		if f.IsDir() {
 			if prefix == "." {
@@ -208,7 +205,8 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 			} else {
 				obj.Name = prefix + "/" + f.Name()
 			}
-			obj.Size = f.Size()
+			info, _ := f.Info()
+			obj.Size = info.Size()
 			resp.Files = append(resp.Files, obj)
 		}
 	}
@@ -219,7 +217,7 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func cleanPath(path string) string {
-	// Clean path to  make safe for use with filepath.Join.
+	// Clean path to make safe for use with filepath.Join.
 	if path == "" {
 		return ""
 	}
