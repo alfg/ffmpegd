@@ -24,9 +24,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.0.8
+                                                      v0.1.0
 	`
-	version     = "ffmpegd version 0.0.8"
+	version     = "ffmpegd version 0.1.0"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
@@ -191,7 +191,9 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 		Files:   []file{},
 	}
 
-	files, _ := ioutil.ReadDir(cleanPath(prefix))
+	base, _ := filepath.Abs(".")
+	cleaned := filepath.Join(base, cleanPath(prefix))
+	files, _ := ioutil.ReadDir(cleaned)
 	for _, f := range files {
 		if f.IsDir() {
 			if prefix == "." {

@@ -70,6 +70,7 @@ type videoOptions struct {
 	MinRate      string `json:"minrate"`
 	MaxRate      string `json:"maxrate"`
 	BufSize      string `json:"bufsize"`
+	GopSize      string `json:"gopsize"`
 	PixelFormat  string `json:"pixel_format"`
 	FrameRate    string `json:"frame_rate"`
 	Speed        string `json:"speed"`
@@ -333,6 +334,11 @@ func setVideoFlags(opt videoOptions) []string {
 	// Buffer Size.
 	if opt.BufSize != "" && opt.BufSize != "0" {
 		args = append(args, []string{"-bufsize", opt.BufSize}...)
+	}
+
+	// GOP size.
+	if opt.GopSize != "" && opt.GopSize != "0" {
+		args = append(args, []string{"-g", opt.GopSize}...)
 	}
 
 	// Pixel Format.
