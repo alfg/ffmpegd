@@ -19,7 +19,7 @@ func (f FFProbe) Run(input string) (*FFProbeResponse, error) {
 		"-i", input,
 		"-show_streams",
 		"-print_format", "json",
-		"-v", "error",
+		"-v", "fatal",
 	}
 
 	// Execute command.
