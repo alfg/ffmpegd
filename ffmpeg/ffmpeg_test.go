@@ -17,7 +17,7 @@ func TestFFmpegRun(t *testing.T) {
 
 func TestFFmpegRunFail(t *testing.T) {
 	f := &FFmpeg{}
-	err := f.Run(testFile, "out.mp4", "{}") // Bad payload.
+	err := f.Run(testFile, "out.mp4", "{\"video\":{\"codec\":\"invalid\"}}") // Bad payload.
 	if err == nil {
 		t.Error()
 	}

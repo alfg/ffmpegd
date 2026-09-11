@@ -130,7 +130,7 @@ func parseArgs() {
 
 func printBanner() {
 	fmt.Println(logo)
-	fmt.Println(description)
+	fmt.Print(description + "\n")
 }
 
 func startServer() {
