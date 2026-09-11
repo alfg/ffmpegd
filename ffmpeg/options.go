@@ -110,6 +110,10 @@ func (e *Encode) Close() {
 
 // ffmpegOptions is the JSON payload sent by ffmpeg-commander.
 type ffmpegOptions struct {
+	// Version of the payload contract. Version 2 sends an untouched saturation
+	// as null, so that 0 can mean greyscale; earlier payloads send 0 for it.
+	Version int `json:"version"`
+
 	Format formatOptions `json:"format"`
 	Video  videoOptions  `json:"video"`
 	Audio  audioOptions  `json:"audio"`
@@ -258,6 +262,14 @@ func codecArgs(flag string, codec optString) []string {
 func transformOptions(opt *ffmpegOptions) []string {
 	args := []string{}
 
+	// Before version 2, 0 meant an untouched saturation slider. Jobs queued in
+	// the browser keep the payload they were created with, so honour it.
+	if opt.Version < 2 {
+		if v, ok := number(opt.Filter.Saturation); ok && v == 0 {
+			opt.Filter.Saturation = ""
+		}
+	}
+
 	// Set format flags if clip options are set.
 	if opt.Format.Clip {
 		args = append(args, setFormatFlags(opt.Format)...)
@@ -330,7 +342,8 @@ func setVideoFlags(opt videoOptions) []string {
 		}
 	}
 
-	if opt.Pass == "crf" && opt.Crf != "" && opt.Crf != "0" {
+	// 0 is a real value: lossless for x264.
+	if opt.Pass == "crf" && opt.Crf != "" {
 		args = append(args, "-crf", string(opt.Crf))
 	}
 
@@ -424,8 +437,8 @@ func setVideoFilters(vopt videoOptions, opt filterOptions) string {
 		args = append(args, "yadif=3:-1:0")
 	}
 
-	// EQ filters. ffmpeg-commander sends these already scaled to eq's units,
-	// so contrast is neutral at 1 and the rest at 0.
+	// EQ filters. ffmpeg-commander sends these already scaled to eq's units:
+	// contrast and saturation are neutral at 1, brightness and gamma at 0.
 	eq := []string{}
 	if v, ok := number(opt.Contrast); ok && v != 1 {
 		eq = append(eq, "contrast="+formatNumber(v))
@@ -433,7 +446,7 @@ func setVideoFilters(vopt videoOptions, opt filterOptions) string {
 	if v, ok := number(opt.Brightness); ok && v != 0 {
 		eq = append(eq, "brightness="+formatNumber(v))
 	}
-	if v, ok := number(opt.Saturation); ok && v != 0 {
+	if v, ok := number(opt.Saturation); ok && v != 1 {
 		eq = append(eq, "saturation="+formatNumber(v))
 	}
 	if v, ok := number(opt.Gamma); ok && v != 0 {
