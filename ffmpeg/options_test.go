@@ -157,7 +157,7 @@ func TestTransformOptions(t *testing.T) {
 		{
 			"denoise default",
 			`{"filter": {"denoise": "default"}}`,
-			"-vf removegrain=0",
+			"-vf hqdn3d",
 		},
 		{
 			"empty denoise and deinterlace",
@@ -167,7 +167,12 @@ func TestTransformOptions(t *testing.T) {
 		{
 			"audio filters",
 			`{"audio": {"codec": "aac", "volume": 150}, "filter": {"acontrast": "50", "adelay": "250"}}`,
-			"-c:a aac -af volume=1.5,acontrast=0.5,adelay=delays=250:all=1",
+			"-c:a aac -af volume=1.5,acontrast=50,adelay=delays=250:all=1",
+		},
+		{
+			"dts needs experimental codecs enabled",
+			`{"audio": {"codec": "dca"}}`,
+			"-c:a dca -strict -2",
 		},
 		{
 			"clip",
