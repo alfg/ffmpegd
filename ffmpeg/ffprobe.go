@@ -3,8 +3,10 @@ package ffmpeg
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -18,6 +20,7 @@ func (f FFProbe) Run(input string) (*FFProbeResponse, error) {
 	args := []string{
 		"-i", input,
 		"-show_streams",
+		"-show_format",
 		"-print_format", "json",
 		"-v", "error",
 	}
@@ -33,8 +36,8 @@ func (f FFProbe) Run(input string) (*FFProbeResponse, error) {
 	}
 
 	dat := &FFProbeResponse{}
-	if err := json.Unmarshal([]byte(stdout), &dat); err != nil {
-		panic(err)
+	if err := json.Unmarshal(stdout, dat); err != nil {
+		return nil, fmt.Errorf("could not read ffprobe output: %w", err)
 	}
 	return dat, nil
 }
@@ -54,6 +57,25 @@ func (f *FFProbe) Version() (string, error) {
 // FFProbeResponse defines the response from ffprobe.
 type FFProbeResponse struct {
 	Streams []stream `json:"streams"`
+	Format  format   `json:"format"`
+}
+
+type format struct {
+	Duration string `json:"duration"`
+}
+
+// Duration returns the input's duration in seconds, or 0 if it is unknown.
+func (r *FFProbeResponse) Duration() float64 {
+	if d, err := strconv.ParseFloat(r.Format.Duration, 64); err == nil && d > 0 {
+		return d
+	}
+	var longest float64
+	for _, s := range r.Streams {
+		if d, err := strconv.ParseFloat(s.Duration, 64); err == nil && d > longest {
+			longest = d
+		}
+	}
+	return longest
 }
 
 type stream struct {
