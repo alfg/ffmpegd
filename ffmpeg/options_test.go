@@ -155,6 +155,31 @@ func TestTransformOptions(t *testing.T) {
 				"yadif=1:-1:0,eq=contrast=1.5:brightness=0.2:saturation=2:gamma=0.5",
 		},
 		{
+			"crf 0 is lossless, not unset",
+			`{"video": {"codec": "libx264", "pass": "crf", "crf": 0}}`,
+			"-c:v libx264 -crf 0",
+		},
+		{
+			"saturation 0 means untouched before payload version 2",
+			`{"filter": {"saturation": "0"}}`,
+			"",
+		},
+		{
+			"saturation 0 is greyscale from payload version 2",
+			`{"version": 2, "filter": {"saturation": "0"}}`,
+			"-vf eq=saturation=0",
+		},
+		{
+			"saturation null is untouched in payload version 2",
+			`{"version": 2, "filter": {"saturation": null}}`,
+			"",
+		},
+		{
+			"saturation 1 is neutral",
+			`{"version": 2, "filter": {"saturation": "1"}}`,
+			"",
+		},
+		{
 			"denoise default",
 			`{"filter": {"denoise": "default"}}`,
 			"-vf hqdn3d",
