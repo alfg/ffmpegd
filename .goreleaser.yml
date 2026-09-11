@@ -39,11 +39,14 @@ homebrew_casks:
     # Skip the tap until the HOMEBREW_TAP_GITHUB_TOKEN secret is set, rather
     # than failing the release.
     skip_upload: '{{ if not (index .Env "HOMEBREW_TAP_GITHUB_TOKEN") }}true{{ end }}'
-    hooks:
-      post:
-        # The binary isn't signed, so clear the quarantine flag macOS sets on
-        # downloads; otherwise Gatekeeper refuses to run it.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ffmpegd"]
-          end
+    # The binary isn't signed, so clear the quarantine flag macOS sets on
+    # downloads; otherwise Gatekeeper refuses to run it. Written as a custom
+    # block because goreleaser's hooks only generate the `postflight` stanza,
+    # which Homebrew has deprecated in favour of `postflight_steps`. Paths in
+    # the steps are relative to the cask's staged path.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "ffmpegd"], chdir: ".", must_succeed: false
+        end
+      end
