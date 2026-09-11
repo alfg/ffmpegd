@@ -1,13 +1,10 @@
 # `ffmpegd`
 [FFmpeg](https://www.ffmpeg.org/) websocket server and API for [FFmpeg Commander](https://ffmpeg-commander.com).
 
-**Currently a work-in-progress! Bugs and breaking changes are expected.*
+*Currently a work-in-progress! Bugs and breaking changes are expected.*
 
-[![GoDoc](https://godoc.org/github.com/alfg/ffmpegd?status.svg)](https://godoc.org/github.com/alfg/ffmpegd)
+[![Go Reference](https://pkg.go.dev/badge/github.com/alfg/ffmpegd.svg)](https://pkg.go.dev/github.com/alfg/ffmpegd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alfg/ffmpegd)](https://goreportcard.com/report/github.com/alfg/ffmpegd)
-
-[![Docker Pulls](https://img.shields.io/docker/pulls/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/)
-[![Docker Automated build](https://img.shields.io/docker/automated/alfg/ffmpegd.svg)](https://hub.docker.com/r/alfg/ffmpegd/builds/)
 
 [![Go](https://github.com/alfg/ffmpegd/actions/workflows/go.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/go.yml)
 [![Docker Image Push](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/docker.yml)
@@ -27,6 +24,7 @@ See [Usage](#Usage) for more details.
 
 ## Install
 ### Go
+Requires Go 1.26 or newer:
 ```
 $ go install github.com/alfg/ffmpegd@latest
 ```
@@ -36,20 +34,14 @@ Release binaries for your platform at:
 https://github.com/alfg/ffmpegd/releases
 
 ### Docker
-A Docker image is available with [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) build installed:
-
-```
-$ docker run -it -p 8080:8080 -v /tmp/:/home alfg/ffmpegd
-```
-
-Or via GitHub Container Registry:
+A Docker image with an [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) build installed is available on the GitHub Container Registry:
 ```
 $ docker run -it -p 8080:8080 -v /tmp/:/home ghcr.io/alfg/ffmpegd
 ```
 
-Or using the `docker-compose` example:
+Or using the Docker Compose example:
 ```
-$ docker-compose up ffmpegd
+$ docker compose up ffmpegd
 ```
 
 ### Homebrew
@@ -62,7 +54,7 @@ TBD
 $ ffmpegd
 ```
 
-This wil start the websocket server in your current working directory and wait for a connection.
+This will start the websocket server in your current working directory and wait for a connection.
 
 * Go to https://ffmpeg-commander.com/ in the browser
 * Enable `ffmpegd` in Options.
@@ -79,16 +71,16 @@ $ ffmpegd
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝
-                                                      v0.0.8
+                                                      v0.1.2
 
 [ffmpegd] - websocket server for ffmpeg-commander.
 
-  Checking FFmpeg version....4.3.1
-  Checking FFprobe version...4.3.1
+  Checking FFmpeg version....9.0.1
+  Checking FFprobe version...9.0.1
 
   Server started on port :8080.
   - Go to https://ffmpeg-commander.com to connect!
-  - ffmpegd must be enabled in ffmpeg-commander options!
+  - ffmpegd must be enabled in ffmpeg-commander options.
 
 Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
 ```
@@ -98,6 +90,7 @@ Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
 See [demo](demo/) for a websocket client example.
 
 ## Develop
+Requires Go 1.26 or newer and `ffmpeg`/`ffprobe` on your `$PATH`.
 ```
 go build -v
 ./ffmpegd
