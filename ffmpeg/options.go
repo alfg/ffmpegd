@@ -407,7 +407,9 @@ func setVideoFilters(vopt videoOptions, opt filterOptions) string {
 		case "heavy":
 			args = append(args, "vaguedenoiser=threshold=6:method=soft:nsteps=5")
 		default:
-			args = append(args, "removegrain=0")
+			// A general-purpose denoiser at its own default strength. This was
+			// removegrain=0, which leaves every plane unchanged.
+			args = append(args, "hqdn3d")
 		}
 	}
 
@@ -459,6 +461,10 @@ func setAudioFlags(opt audioOptions) []string {
 	if opt.Codec.set() {
 		args = append(args, codecArgs("-c:a", opt.Codec)...)
 	}
+	// ffmpeg's DTS encoder is marked experimental and refuses to run without this.
+	if opt.Codec == "dca" {
+		args = append(args, "-strict", "-2")
+	}
 
 	sampleRate := opt.SampleRate
 	if sampleRate == "" {
@@ -490,8 +496,11 @@ func setAudioFilters(opt audioOptions, filter filterOptions) string {
 		args = append(args, "volume="+formatNumber(v/100))
 	}
 
+	// acontrast takes 0-100 itself, the same scale ffmpeg-commander's slider
+	// sends; this used to divide by 100, leaving almost no effect. 33, the
+	// filter's default, is treated as off.
 	if v, ok := number(filter.Acontrast); ok && v != 33 {
-		args = append(args, "acontrast="+formatNumber(v/100))
+		args = append(args, "acontrast="+formatNumber(v))
 	}
 
 	// Delay every channel by the same amount, in milliseconds.
