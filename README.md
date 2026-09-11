@@ -1,5 +1,5 @@
 # `ffmpegd`
-[FFmpeg](https://www.ffmpeg.org/) websocket server and API for [FFmpeg Commander](https://alfg.github.io/ffmpeg-commander).
+[FFmpeg](https://www.ffmpeg.org/) websocket server and API for [FFmpeg Commander](https://ffmpeg-commander.com).
 
 **Currently a work-in-progress! Bugs and breaking changes are expected.*
 
@@ -14,7 +14,7 @@
 [![goreleaser](https://github.com/alfg/ffmpegd/actions/workflows/release.yml/badge.svg)](https://github.com/alfg/ffmpegd/actions/workflows/release.yml)
 
 ## How It Works
-`ffmpegd` connects [FFmpeg Commander](https://alfg.github.io/ffmpeg-commander) to [ffmpeg](https://www.ffmpeg.org/) by providing a websocket server to send encode tasks and receive realtime progress updates back to the browser. This allows using `ffmpeg-commander` as a GUI for `ffmpeg`.
+`ffmpegd` connects [FFmpeg Commander](https://ffmpeg-commander.com) to [ffmpeg](https://www.ffmpeg.org/) by providing a websocket server to send encode tasks and receive realtime progress updates back to the browser. This allows using `ffmpeg-commander` as a GUI for `ffmpeg`.
 
 The goal is to provide a simple interface for sending FFmpeg tasks from the browser (and other supported clients in the future) to your local machine.
 
@@ -64,7 +64,7 @@ $ ffmpegd
 
 This wil start the websocket server in your current working directory and wait for a connection.
 
-* Go to https://alfg.github.io/ffmpeg-commander/ in the browser
+* Go to https://ffmpeg-commander.com/ in the browser
 * Enable `ffmpegd` in Options.
 * Once connected, you can start sending encode jobs to ffmpegd!
 
@@ -87,7 +87,7 @@ $ ffmpegd
   Checking FFprobe version...4.3.1
 
   Server started on port :8080.
-  - Go to https://alfg.github.io/ffmpeg-commander to connect!
+  - Go to https://ffmpeg-commander.com to connect!
   - ffmpegd must be enabled in ffmpeg-commander options!
 
 Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77

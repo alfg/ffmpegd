@@ -43,6 +43,8 @@ var (
 		"http://localhost:" + port,
 		"https://alfg.github.io",
 		"https://alfg.dev",
+		"https://ffmpeg-commander.com",
+		"https://www.ffmpeg-commander.com",
 	}
 	clients   = make(map[*websocket.Conn]bool)
 	broadcast = make(chan Message)
@@ -128,7 +130,7 @@ func parseArgs() {
 
 func printBanner() {
 	fmt.Println(logo)
-	fmt.Println(description)
+	fmt.Print(description + "\n")
 }
 
 func startServer() {
@@ -140,7 +142,7 @@ func startServer() {
 	go handleMessages()
 
 	fmt.Println("  Server started on port \u001b[33m:" + port + "\u001b[0m.")
-	fmt.Println("  - Go to \u001b[33mhttps://alfg.github.io/ffmpeg-commander\u001b[0m to connect!")
+	fmt.Println("  - Go to \u001b[33mhttps://ffmpeg-commander.com\u001b[0m to connect!")
 	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options.")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")

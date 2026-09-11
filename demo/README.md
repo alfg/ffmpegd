@@ -8,7 +8,7 @@ go build -v && ./ffmpegd
 http://localhost:8080/demo/
 
 ## Example
-Use the JavaScript WebSocket API to connect and send an encode payload based on the [ffmpeg-commander](https://alfg.github.io/ffmpeg-commander) JSON format:
+Use the JavaScript WebSocket API to connect and send an encode payload based on the [ffmpeg-commander](https://ffmpeg-commander.com) JSON format:
 
 ```javascript
 var wsUri = "ws://localhost:8080/ws";
