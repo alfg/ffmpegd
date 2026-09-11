@@ -1,17 +1,18 @@
 ###############################
 # Build the ffmpegd-build image.
-FROM golang:1.16-alpine as build
+FROM golang:1.26-alpine AS build
 
 WORKDIR /go/src/ffmpegd
-COPY . .
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+COPY . .
+RUN go install -v .
 
 ##########################
 # Build the release image.
 FROM alfg/ffmpeg:latest
-LABEL MAINTAINER Alfred Gutierrez <alf.g.jr@gmail.com>
+LABEL maintainer="Alfred Gutierrez <alf.g.jr@gmail.com>"
 
 WORKDIR /home
 ENV PATH=/opt/bin:$PATH
