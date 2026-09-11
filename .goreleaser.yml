@@ -33,10 +33,10 @@ homebrew_casks:
       owner: alfg
       name: homebrew-tap
       branch: master
-      token: '{{ envOrDefault "HOMEBREW_TAP_GITHUB_TOKEN" "" }}'
+      token: '{{ index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}'
     # Skip the tap until the HOMEBREW_TAP_GITHUB_TOKEN secret is set, rather
     # than failing the release.
-    skip_upload: '{{ if eq (envOrDefault "HOMEBREW_TAP_GITHUB_TOKEN" "") "" }}true{{ end }}'
+    skip_upload: '{{ if not (index .Env "HOMEBREW_TAP_GITHUB_TOKEN") }}true{{ end }}'
     hooks:
       post:
         # The binary isn't signed, so clear the quarantine flag macOS sets on
