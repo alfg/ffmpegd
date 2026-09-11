@@ -63,20 +63,42 @@ websocket.send(JSON.stringify({
     type: 'encode',
     input: 'input.mp4',
     output: 'output.mp4',
-    payload: payload
+    payload: JSON.stringify(payload) // The payload is sent as a JSON string.
 }));
 ```
 
-The websocket server will respond with progress until the encode is complete.
+Paths are relative to the directory `ffmpegd` was started in. Encodes run one at a time, in the order they are sent.
+
+## Responses
+The server sends progress about once a second while encoding:
 
 ```JSON
-{"percent":59.17,"speed":"5.31x","fps":0}
+{"percent":34.68,"speed":"3.37x","fps":80.77}
+```
 
-{"percent":95,"speed":"2.98x","fps":67.87}
+Progress is measured against the length of the output, so it works for audio-only encodes and clips. For two-pass encodes, each pass is half of the total. `percent` stays below 100 until the encode is finished.
 
-{"percent":95,"speed":"2.98x","fps":67.87}
+When the encode finishes:
 
-{"percent":100,"speed":"1.29x","fps":31.04}
+```JSON
+{"percent":100,"speed":"","fps":0}
+```
 
-{"percent":100,"speed":"","fps":0} 
+If the encode fails, or a message can't be read, `err` holds the reason, usually ffmpeg's error output:
+
+```JSON
+{"percent":0,"speed":"","fps":0,"err":"Unknown encoder 'libaom-av1'"}
+```
+
+## Cancelling
+Stop the running encode with:
+
+```javascript
+websocket.send(JSON.stringify({ type: 'cancel' }));
+```
+
+The server kills ffmpeg and replies:
+
+```JSON
+{"percent":0,"speed":"","fps":0,"cancelled":true}
 ```

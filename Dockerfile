@@ -16,6 +16,9 @@ LABEL maintainer="Alfred Gutierrez <alf.g.jr@gmail.com>"
 
 WORKDIR /home
 ENV PATH=/opt/bin:$PATH
+# Listen on all interfaces inside the container, or the published port can't
+# reach it. Limit exposure with the port mapping instead.
+ENV FFMPEGD_HOST=0.0.0.0
 
 COPY --from=build /go/bin/ffmpegd /opt/bin/ffmpegd
 

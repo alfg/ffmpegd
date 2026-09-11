@@ -2,13 +2,16 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alfg/ffmpegd/ffmpeg"
@@ -23,42 +26,49 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.1.2
+                                                      v0.2.0
 	`
-	version     = "ffmpegd version 0.1.2"
+	version     = "ffmpegd version 0.2.0"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
-  ffmpegd            Run server.
-  ffmpegd [port]     Run server on port.
-  ffmpegd version    Print version.
-  ffmpegd help       This help text.
+  ffmpegd [--host address] [port]   Run server on localhost:8080 by default.
+  ffmpegd version                   Print version.
+  ffmpegd help                      This help text.
+
+Options:
+  --host address   Address to listen on. Use 0.0.0.0 to let other machines on
+                   your network connect. Can also be set with $FFMPEGD_HOST.
 	`
 	progressInterval = time.Second * 1
+	writeTimeout     = time.Second * 10
+	maxQueuedJobs    = 100
 )
 
 var (
-	port           = "8080"
-	allowedOrigins = []string{
-		"http://localhost:" + port,
+	port = "8080"
+	host = "localhost"
+
+	// Sites allowed to connect, besides the daemon's own localhost origin.
+	remoteOrigins = []string{
 		"https://alfg.github.io",
 		"https://alfg.dev",
 		"https://ffmpeg-commander.com",
 		"https://www.ffmpeg-commander.com",
 	}
-	clients   = make(map[*websocket.Conn]bool)
-	broadcast = make(chan Message)
-	upgrader  = websocket.Upgrader{
+	allowedOrigins []string
+
+	clients  = &hub{conns: make(map[*websocket.Conn]bool)}
+	jobs     = make(chan Message, maxQueuedJobs)
+	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			for _, origin := range allowedOrigins {
-				if r.Header.Get("Origin") == origin {
-					return true
-				}
-			}
-			return false
+			return isAllowedOrigin(r.Header.Get("Origin"))
 		},
 	}
-	progressCh chan struct{}
+
+	// The running encode, so a cancel message can stop it.
+	currentMu sync.Mutex
+	current   *ffmpeg.FFmpeg
 )
 
 // Message payload from client.
@@ -71,10 +81,11 @@ type Message struct {
 
 // Status response to client.
 type Status struct {
-	Percent float64 `json:"percent"`
-	Speed   string  `json:"speed"`
-	FPS     float64 `json:"fps"`
-	Err     string  `json:"err,omitempty"`
+	Percent   float64 `json:"percent"`
+	Speed     string  `json:"speed"`
+	FPS       float64 `json:"fps"`
+	Err       string  `json:"err,omitempty"`
+	Cancelled bool    `json:"cancelled,omitempty"`
 }
 
 // FilesResponse http response for files endpoint.
@@ -89,8 +100,60 @@ type file struct {
 	Size int64  `json:"size"`
 }
 
+// hub is the set of connected clients. gorilla/websocket allows one writer at
+// a time per connection, so writes go through the hub's lock too.
+type hub struct {
+	mu    sync.Mutex
+	conns map[*websocket.Conn]bool
+}
+
+func (h *hub) add(c *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.conns[c] = true
+}
+
+func (h *hub) remove(c *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.conns, c)
+	c.Close()
+}
+
+// send writes a message to one client, dropping it if the write fails.
+func (h *hub) send(c *websocket.Conn, v any) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.write(c, v)
+}
+
+// broadcast writes a message to every client.
+func (h *hub) broadcast(v any) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c := range h.conns {
+		h.write(c, v)
+	}
+}
+
+func (h *hub) write(c *websocket.Conn, v any) {
+	c.SetWriteDeadline(time.Now().Add(writeTimeout))
+	if err := c.WriteJSON(v); err != nil {
+		delete(h.conns, c)
+		c.Close()
+	}
+}
+
 func Run() {
-	parseArgs()
+	if err := parseArgs(os.Args[1:]); err != nil {
+		fmt.Println("\u001b[31m" + err.Error() + "\u001b[0m")
+		fmt.Println(usage)
+		os.Exit(2)
+	}
+	allowedOrigins = append([]string{
+		"http://localhost:" + port,
+		"http://127.0.0.1:" + port,
+	}, remoteOrigins...)
 
 	// CLI Banner.
 	printBanner()
@@ -100,32 +163,43 @@ func Run() {
 	if err != nil {
 		fmt.Println("\u001b[31m" + err.Error() + "\u001b[0m")
 		fmt.Println("\u001b[31mPlease ensure FFmpeg and FFprobe are installed and available on $PATH.\u001b[0m")
-		return
+		os.Exit(1)
 	}
 
 	// HTTP/WS Server.
 	startServer()
 }
 
-func parseArgs() {
-	args := os.Args
-
-	// Use defaults if no args are set.
-	if len(args) == 1 {
-		return
+func parseArgs(args []string) error {
+	if h := os.Getenv("FFMPEGD_HOST"); h != "" {
+		host = h
 	}
 
-	// Print version, help or set port.
-	if args[1] == "version" || args[1] == "-v" {
-		fmt.Println(version)
-		os.Exit(1)
-	} else if args[1] == "help" || args[1] == "-h" {
-		fmt.Println(usage)
-		os.Exit(1)
-	} else if _, err := strconv.Atoi(args[1]); err == nil {
-		port = args[1]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "version" || arg == "-v" || arg == "--version":
+			fmt.Println(version)
+			os.Exit(0)
+		case arg == "help" || arg == "-h" || arg == "--help":
+			fmt.Println(usage)
+			os.Exit(0)
+		case arg == "--host" || arg == "-host":
+			if i+1 == len(args) {
+				return errors.New("--host needs an address, such as 0.0.0.0")
+			}
+			i++
+			host = args[i]
+		case strings.HasPrefix(arg, "--host="):
+			host = strings.TrimPrefix(arg, "--host=")
+		default:
+			if n, err := strconv.Atoi(arg); err != nil || n < 1 || n > 65535 {
+				return fmt.Errorf("unknown argument %q", arg)
+			}
+			port = arg
+		}
 	}
-
+	return nil
 }
 
 func printBanner() {
@@ -133,48 +207,120 @@ func printBanner() {
 	fmt.Print(description + "\n")
 }
 
+// listen opens the server's listeners. "localhost" listens on both loopback
+// addresses, since browsers may resolve it to either.
+func listen() ([]net.Listener, error) {
+	if host != "localhost" {
+		l, err := net.Listen("tcp", net.JoinHostPort(host, port))
+		if err != nil {
+			return nil, err
+		}
+		return []net.Listener{l}, nil
+	}
+
+	l, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+	if err != nil {
+		return nil, err
+	}
+	listeners := []net.Listener{l}
+	// IPv6 may be unavailable; IPv4 alone is enough.
+	if l6, err := net.Listen("tcp", net.JoinHostPort("::1", port)); err == nil {
+		listeners = append(listeners, l6)
+	}
+	return listeners, nil
+}
+
+func isLoopback(h string) bool {
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
+}
+
 func startServer() {
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/files", handleFiles)
 	http.Handle("/", http.FileServer(http.Dir("./")))
 
-	// Handles incoming WS messages from client.
+	listeners, err := listen()
+	if err != nil {
+		fmt.Println("\u001b[31mCould not start server: " + err.Error() + "\u001b[0m")
+		if strings.Contains(err.Error(), "address already in use") {
+			fmt.Println("Is ffmpegd already running? To use another port, run: ffmpegd 8081")
+		}
+		os.Exit(1)
+	}
+
+	// Handles queued encodes, one at a time.
 	go handleMessages()
 
-	fmt.Println("  Server started on port \u001b[33m:" + port + "\u001b[0m.")
+	fmt.Println("  Server started on \u001b[33mhttp://" + net.JoinHostPort(host, port) + "\u001b[0m.")
+	if !isLoopback(host) {
+		fmt.Println("  \u001b[31mListening on " + host + ", so other machines may be able to connect.\u001b[0m")
+	}
 	fmt.Println("  - Go to \u001b[33mhttps://ffmpeg-commander.com\u001b[0m to connect!")
 	fmt.Println("  - \u001b[33mffmpegd\u001b[0m must be enabled in ffmpeg-commander options.")
 	fmt.Println("")
 	fmt.Printf("Waiting for connection...")
-	err := http.ListenAndServe(":"+port, nil)
-	if err != nil {
-		fmt.Println("ListenAndServe: ", err)
+
+	errs := make(chan error, len(listeners))
+	for _, l := range listeners {
+		go func(l net.Listener) { errs <- http.Serve(l, nil) }(l)
 	}
+	fmt.Println("\n\u001b[31mServer stopped: " + (<-errs).Error() + "\u001b[0m")
+	os.Exit(1)
+}
+
+func isAllowedOrigin(origin string) bool {
+	for _, o := range allowedOrigins {
+		if origin == o {
+			return true
+		}
+	}
+	return false
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
+	if origin := r.Header.Get("Origin"); !isAllowedOrigin(origin) {
+		fmt.Printf("\rRejected connection from %q: not an allowed origin.%s\n", origin, clearLine)
+		http.Error(w, "origin not allowed", http.StatusForbidden)
+		return
+	}
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Printf("\rWaiting for connection...\u001b[31m websocket connection failed!\u001b[0m")
 		return
 	}
-	defer ws.Close()
+	clients.add(ws)
+	defer clients.remove(ws)
 
-	// Register client.
-	clients[ws] = true
-
+	fmt.Printf("\rWaiting for connection......\u001b[32mconnected!\u001b[0m")
 	for {
-		fmt.Printf("\rWaiting for connection......\u001b[32mconnected!\u001b[0m")
-		var msg Message
-		// Read in a new message as JSON and map it to a Message object.
-		err := ws.ReadJSON(&msg)
+		_, data, err := ws.ReadMessage()
 		if err != nil {
 			fmt.Printf("\rWaiting for connection...\u001b[31mdisconnected!\u001b[0m")
-			delete(clients, ws)
-			break
+			return
 		}
-		// Send the newly received message to the broadcast channel.
-		broadcast <- msg
+
+		var msg Message
+		if err := json.Unmarshal(data, &msg); err != nil {
+			clients.send(ws, Status{Err: "invalid message: " + err.Error()})
+			continue
+		}
+
+		switch msg.Type {
+		case "encode":
+			select {
+			case jobs <- msg:
+			default:
+				clients.send(ws, Status{Err: "too many encodes queued, try again later"})
+			}
+		case "cancel":
+			cancelEncode()
+		default:
+			clients.send(ws, Status{Err: fmt.Sprintf("unknown message type %q", msg.Type)})
+		}
 	}
 }
 
@@ -201,20 +347,20 @@ func handleFiles(w http.ResponseWriter, r *http.Request) {
 				resp.Folders = append(resp.Folders, prefix+"/"+f.Name()+"/")
 			}
 		} else {
-			var obj file
-			if prefix == "./" {
-				obj.Name = prefix + f.Name()
-			} else {
-				obj.Name = prefix + "/" + f.Name()
+			info, err := f.Info()
+			if err != nil {
+				continue // Removed since the directory was read.
 			}
-			info, _ := f.Info()
-			obj.Size = info.Size()
+			obj := file{Name: prefix + "/" + f.Name(), Size: info.Size()}
+			if prefix == "." {
+				obj.Name = f.Name()
+			}
 			resp.Files = append(resp.Files, obj)
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	cors(&w, r)
+	cors(w, r)
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -231,21 +377,16 @@ func cleanPath(path string) string {
 	return filepath.Clean(path)
 }
 
-func cors(w *http.ResponseWriter, r *http.Request) {
-	for _, origin := range allowedOrigins {
-		if r.Header.Get("Origin") == origin {
-			(*w).Header().Set("Access-Control-Allow-Origin", origin)
-		}
+func cors(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Vary", "Origin")
+	if origin := r.Header.Get("Origin"); isAllowedOrigin(origin) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 	}
 }
 
 func handleMessages() {
-	for {
-		msg := <-broadcast
-
-		if msg.Type == "encode" {
-			runEncode(msg.Input, msg.Output, msg.Payload)
-		}
+	for msg := range jobs {
+		runEncode(msg)
 	}
 }
 
@@ -266,90 +407,130 @@ func verifyFFmpeg() error {
 	return nil
 }
 
-func runEncode(input, output, payload string) {
-	probe := ffmpeg.FFProbe{}
-	probeData, err := probe.Run(input)
-	if err != nil {
-		sendError(err)
-		return
-	}
-
-	ffmpeg := &ffmpeg.FFmpeg{}
-	go trackEncodeProgress(probeData, ffmpeg)
-	err = ffmpeg.Run(input, output, payload)
-
-	// If we get an error back from ffmpeg, send an error ws message to clients.
-	if err != nil {
-		close(progressCh)
-		sendError(err)
-		return
-	}
-	close(progressCh)
-
-	for client := range clients {
-		p := &Status{
-			Percent: 100,
-		}
-		err := client.WriteJSON(p)
-		if err != nil {
-			fmt.Println("error: %w", err)
-			client.Close()
-			delete(clients, client)
-		}
+func cancelEncode() {
+	currentMu.Lock()
+	defer currentMu.Unlock()
+	if current != nil {
+		current.Cancel()
 	}
 }
+
+func runEncode(msg Message) {
+	// Registered before anything slow, so a cancel that arrives while the
+	// input is still being probed is not lost.
+	f := &ffmpeg.FFmpeg{}
+	currentMu.Lock()
+	current = f
+	currentMu.Unlock()
+	defer func() {
+		currentMu.Lock()
+		current = nil
+		currentMu.Unlock()
+	}()
+
+	fmt.Printf("\rEncoding %s -> %s%s\n", msg.Input, msg.Output, clearLine)
+
+	e, err := ffmpeg.NewEncode(msg.Input, msg.Output, msg.Payload)
+	if err != nil {
+		sendError(err)
+		return
+	}
+	defer e.Close()
+
+	probe, err := ffmpeg.FFProbe{}.Run(msg.Input)
+	if err != nil {
+		sendError(err)
+		return
+	}
+
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		trackEncodeProgress(f, e.OutputDuration(probe.Duration()), totalFrames(probe), done)
+	}()
+	err = f.RunEncode(e)
+	// Stop progress updates before the final status so none can follow it.
+	close(done)
+	wg.Wait()
+
+	switch {
+	case errors.Is(err, ffmpeg.ErrCancelled):
+		fmt.Printf("\rEncode cancelled.%s\n", clearLine)
+		clients.broadcast(Status{Cancelled: true})
+	case err != nil:
+		sendError(err)
+	default:
+		fmt.Printf("\rEncode finished: %s%s\n", msg.Output, clearLine)
+		clients.broadcast(Status{Percent: 100})
+	}
+	fmt.Printf("Waiting for next job...")
+}
+
+// clearLine erases what's left of a progress line after \r.
+const clearLine = "\u001b[K"
 
 func sendError(err error) {
-	for client := range clients {
-		p := &Status{
-			Err: err.Error(),
-		}
-		err := client.WriteJSON(p)
-		if err != nil {
-			fmt.Println("error: %w", err)
-			client.Close()
-			delete(clients, client)
-		}
-	}
+	fmt.Printf("\r\u001b[31mEncode failed:\u001b[0m %s%s\n", err, clearLine)
+	clients.broadcast(Status{Err: err.Error()})
 }
 
-func trackEncodeProgress(p *ffmpeg.FFProbeResponse, f *ffmpeg.FFmpeg) {
-	progressCh = make(chan struct{})
+// totalFrames returns the frame count of the first video stream, or 0.
+func totalFrames(p *ffmpeg.FFProbeResponse) int {
+	for _, s := range p.Streams {
+		if s.CodecType == "video" {
+			n, _ := strconv.Atoi(s.NbFrames)
+			return n
+		}
+	}
+	return 0
+}
+
+// trackEncodeProgress reports progress to clients until done is closed.
+// Progress is measured against the output duration when it is known, and the
+// frame count otherwise. Each pass of a two-pass encode is half the total.
+func trackEncodeProgress(f *ffmpeg.FFmpeg, duration float64, frames int, done <-chan struct{}) {
 	ticker := time.NewTicker(progressInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-progressCh:
-			ticker.Stop()
-			fmt.Printf("\rWaiting for next job...                                                    ")
+		case <-done:
 			return
 		case <-ticker.C:
-			currentFrame := f.Progress.Frame
-			totalFrames, _ := strconv.Atoi(p.Streams[0].NbFrames)
-			speed := f.Progress.Speed
-			fps := f.Progress.FPS
-
-			// Only track progress if we know the total frames.
-			if totalFrames != 0 {
-				pct := (float64(currentFrame) / float64(totalFrames)) * 100
-				pct = math.Round(pct*100) / 100
-
-				fmt.Printf("\rEncoding... %d / %d (%0.2f%%) %s @ %0.2f fps", currentFrame, totalFrames, pct, speed, fps)
-
-				for client := range clients {
-					p := &Status{
-						Percent: pct,
-						Speed:   speed,
-						FPS:     fps,
-					}
-					err := client.WriteJSON(p)
-					if err != nil {
-						fmt.Println("error: %w", err)
-						client.Close()
-						delete(clients, client)
-					}
-				}
+			p := f.Progress()
+			if p.Passes == 0 {
+				continue
 			}
+
+			frac := -1.0
+			switch {
+			case duration > 0:
+				frac = float64(p.OutTimeUS) / 1e6 / duration
+			case frames > 0:
+				frac = float64(p.Frame) / float64(frames)
+			}
+
+			var pct float64
+			if frac >= 0 {
+				pct = (float64(p.Pass-1) + math.Min(frac, 1)) / float64(p.Passes) * 100
+				// 100 tells the client the job is done, so hold just short of
+				// it until ffmpeg exits.
+				pct = math.Min(math.Round(pct*100)/100, 99.99)
+			}
+
+			pass := ""
+			if p.Passes > 1 {
+				pass = fmt.Sprintf(" pass %d/%d", p.Pass, p.Passes)
+			}
+			if frac >= 0 {
+				fmt.Printf("\rEncoding...%s %0.2f%% %s @ %0.2f fps%s", pass, pct, p.Speed, p.FPS, clearLine)
+			} else {
+				fmt.Printf("\rEncoding...%s %0.1fs done %s @ %0.2f fps%s", pass, float64(p.OutTimeUS)/1e6, p.Speed, p.FPS, clearLine)
+			}
+
+			clients.broadcast(Status{Percent: pct, Speed: p.Speed, FPS: p.FPS})
 		}
 	}
 }
