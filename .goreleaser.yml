@@ -33,7 +33,9 @@ homebrew_casks:
       owner: alfg
       name: homebrew-tap
       branch: master
-      token: '{{ index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}'
+      # goreleaser only accepts a bare {{ .Env.NAME }} here. The workflow always
+      # sets the variable, empty when the secret is missing.
+      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
     # Skip the tap until the HOMEBREW_TAP_GITHUB_TOKEN secret is set, rather
     # than failing the release.
     skip_upload: '{{ if not (index .Env "HOMEBREW_TAP_GITHUB_TOKEN") }}true{{ end }}'
