@@ -1,8 +1,6 @@
 # `ffmpegd`
 [FFmpeg](https://www.ffmpeg.org/) websocket server and API for [FFmpeg Commander](https://ffmpeg-commander.com).
 
-*Currently a work-in-progress! Bugs and breaking changes are expected.*
-
 [![Go Reference](https://pkg.go.dev/badge/github.com/alfg/ffmpegd.svg)](https://pkg.go.dev/github.com/alfg/ffmpegd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alfg/ffmpegd)](https://goreportcard.com/report/github.com/alfg/ffmpegd)
 
@@ -23,6 +21,12 @@ See [Usage](#Usage) for more details.
 ```
 
 ## Install
+### Homebrew
+Installs `ffmpegd` along with `ffmpeg`:
+```
+$ brew install alfg/tap/ffmpegd
+```
+
 ### Go
 Requires Go 1.26 or newer:
 ```
@@ -36,16 +40,13 @@ https://github.com/alfg/ffmpegd/releases
 ### Docker
 A Docker image with an [alfg/ffmpeg](https://github.com/alfg/docker-ffmpeg) build installed is available on the GitHub Container Registry:
 ```
-$ docker run -it -p 8080:8080 -v /tmp/:/home ghcr.io/alfg/ffmpegd
+$ docker run -it -p 127.0.0.1:8080:8080 -v /tmp/:/home ghcr.io/alfg/ffmpegd
 ```
 
 Or using the Docker Compose example:
 ```
 $ docker compose up ffmpegd
 ```
-
-### Homebrew
-TBD
 
 ## Usage
 * [ffmpeg](https://www.ffmpeg.org/download.html) must be installed and available on your `$PATH`.
@@ -54,11 +55,27 @@ TBD
 $ ffmpegd
 ```
 
-This will start the websocket server in your current working directory and wait for a connection.
+This will start the websocket server in your current working directory and wait for a connection. Input and output paths are relative to this directory.
 
 * Go to https://ffmpeg-commander.com/ in the browser
 * Enable `ffmpegd` in Options.
 * Once connected, you can start sending encode jobs to ffmpegd!
+
+### Options
+```
+$ ffmpegd help
+
+Usage:
+  ffmpegd [--host address] [port]   Run server on localhost:8080 by default.
+  ffmpegd version                   Print version.
+  ffmpegd help                      This help text.
+
+Options:
+  --host address   Address to listen on. Use 0.0.0.0 to let other machines on
+                   your network connect. Can also be set with $FFMPEGD_HOST.
+```
+
+By default `ffmpegd` only accepts connections from your own machine. Only listen on other addresses on a network you trust: anyone who can reach `ffmpegd` can run encodes and list files in its directory.
 
 ## Example
 ### `ffmpegd` with a job in progress from `ffmpeg-commander`
@@ -71,18 +88,19 @@ $ ffmpegd
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝
-                                                      v0.1.2
+                                                      v0.2.0
 
 [ffmpegd] - websocket server for ffmpeg-commander.
 
   Checking FFmpeg version....9.0.1
   Checking FFprobe version...9.0.1
 
-  Server started on port :8080.
+  Server started on http://localhost:8080.
   - Go to https://ffmpeg-commander.com to connect!
   - ffmpegd must be enabled in ffmpeg-commander options.
 
-Encoding... 6111 / 17620 (34.68%) 3.37x @ 80.77
+Encoding tears-of-steel.mp4 -> tears-of-steel-720p.mp4
+Encoding... 34.68% 3.37x @ 80.77 fps
 ```
 ![ffmpeg-commander](screenshot.png)
 
