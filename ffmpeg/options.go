@@ -50,7 +50,8 @@ func NewEncode(input, output, payload string) (*Encode, error) {
 
 	args := append(global, transformOptions(options)...)
 
-	if string(options.Video.Pass) == "2" {
+	// NVENC does its passes inside one encode, as -multipass.
+	if string(options.Video.Pass) == "2" && !isNvenc(options.Video.Codec) {
 		dir, err := os.MkdirTemp("", "ffmpegd-2pass-")
 		if err != nil {
 			return nil, err
@@ -130,22 +131,28 @@ type formatOptions struct {
 }
 
 type videoOptions struct {
-	Codec        optString `json:"codec"`
-	Preset       optString `json:"preset"`
-	Pass         optString `json:"pass"`
-	Crf          optString `json:"crf"`
-	Bitrate      optString `json:"bitrate"`
-	MinRate      optString `json:"minrate"`
-	MaxRate      optString `json:"maxrate"`
-	BufSize      optString `json:"bufsize"`
-	GopSize      optString `json:"gopsize"`
-	PixelFormat  optString `json:"pixel_format"`
-	FrameRate    optString `json:"frame_rate"`
-	Speed        optString `json:"speed"`
-	Tune         optString `json:"tune"`
-	Profile      optString `json:"profile"`
-	Level        optString `json:"level"`
-	FastStart    optBool   `json:"faststart"`
+	Codec       optString `json:"codec"`
+	Preset      optString `json:"preset"`
+	Pass        optString `json:"pass"`
+	Crf         optString `json:"crf"`
+	Bitrate     optString `json:"bitrate"`
+	MinRate     optString `json:"minrate"`
+	MaxRate     optString `json:"maxrate"`
+	BufSize     optString `json:"bufsize"`
+	GopSize     optString `json:"gopsize"`
+	PixelFormat optString `json:"pixel_format"`
+	FrameRate   optString `json:"frame_rate"`
+	Speed       optString `json:"speed"`
+	Tune        optString `json:"tune"`
+	Profile     optString `json:"profile"`
+	Level       optString `json:"level"`
+	FastStart   optBool   `json:"faststart"`
+
+	// NVENC-only settings, ignored for other encoders.
+	NvencMultipass optString `json:"nvenc_multipass"`
+	NvencAq        optString `json:"nvenc_aq"`
+	NvencLookahead optString `json:"nvenc_lookahead"`
+
 	Size         optString `json:"size"`
 	Width        optString `json:"width"`
 	Height       optString `json:"height"`
@@ -342,8 +349,10 @@ func setVideoFlags(opt videoOptions) []string {
 		}
 	}
 
-	// 0 is a real value: lossless for x264.
-	if opt.Pass == "crf" && opt.Crf != "" {
+	if isNvenc(opt.Codec) {
+		args = append(args, nvencFlags(opt)...)
+	} else if opt.Pass == "crf" && opt.Crf != "" {
+		// 0 is a real value: lossless for x264.
 		args = append(args, "-crf", string(opt.Crf))
 	}
 
@@ -354,6 +363,45 @@ func setVideoFlags(opt videoOptions) []string {
 	if opt.CodecOptions != "" && (opt.Codec == "libx264" || opt.Codec == "libx265") {
 		p := strings.Replace(string(opt.Codec), "lib", "", 1)
 		args = append(args, "-"+p+"-params", string(opt.CodecOptions))
+	}
+
+	return args
+}
+
+// isNvenc reports whether the codec is one of the NVENC encoders, which take
+// their own rate-control flags in place of -crf and -pass.
+func isNvenc(codec optString) bool {
+	return codec == "h264_nvenc" || codec == "hevc_nvenc"
+}
+
+// nvencFlags returns NVENC rate control and settings, in ffmpeg-commander's
+// order. The crf field carries the CQ or QP value.
+func nvencFlags(opt videoOptions) []string {
+	args := []string{}
+
+	switch {
+	case opt.Pass == "crf" && opt.Crf != "":
+		args = append(args, "-rc", "vbr", "-cq", string(opt.Crf))
+	case opt.Pass == "cbr":
+		args = append(args, "-rc", "cbr")
+	case opt.Pass == "constqp" && opt.Crf != "":
+		args = append(args, "-rc", "constqp", "-qp", string(opt.Crf))
+	}
+
+	if opt.NvencMultipass.set() && opt.NvencMultipass != "disabled" {
+		args = append(args, "-multipass", string(opt.NvencMultipass))
+	}
+
+	if opt.NvencAq == "spatial" || opt.NvencAq == "both" {
+		args = append(args, "-spatial-aq", "1")
+	}
+	if opt.NvencAq == "temporal" || opt.NvencAq == "both" {
+		args = append(args, "-temporal-aq", "1")
+	}
+
+	// A whole number of frames, as parseInt reads it in ffmpeg-commander.
+	if v, ok := number(opt.NvencLookahead); ok && int(v) > 0 {
+		args = append(args, "-rc-lookahead", strconv.Itoa(int(v)))
 	}
 
 	return args
