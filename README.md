@@ -15,6 +15,9 @@ The goal is to provide a simple interface for sending FFmpeg tasks from the brow
 
 See [Usage](#Usage) for more details.
 
+### Versions
+`ffmpegd` and `ffmpeg-commander` share version numbers: releases with the same major.minor version (2.1.x with 2.1.x) speak the same payload format. Update `ffmpegd` when ffmpeg-commander moves to a new minor version.
+
 ```
           process              websocket
 [ffmpeg] <-------> [ffmpegd] <-----------> [ffmpeg-commander]
@@ -88,7 +91,7 @@ $ ffmpegd
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝
-                                                      v0.2.1
+                                                      v2.1.0
 
 [ffmpegd] - websocket server for ffmpeg-commander.
 

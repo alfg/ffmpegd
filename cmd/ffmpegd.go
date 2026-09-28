@@ -26,9 +26,9 @@ const (
 ██╔══╝  ██╔══╝  ██║╚██╔╝██║██╔═══╝ ██╔══╝  ██║   ██║██║  ██║
 ██║     ██║     ██║ ╚═╝ ██║██║     ███████╗╚██████╔╝██████╔╝
 ╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═════╝ 
-                                                      v0.2.1
+                                                      v2.1.0
 	`
-	version     = "ffmpegd version 0.2.1"
+	version     = "ffmpegd version 2.1.0"
 	description = "[\u001b[32mffmpegd\u001b[0m] - websocket server for \u001b[33mffmpeg-commander\u001b[0m.\n"
 	usage       = `
 Usage:
