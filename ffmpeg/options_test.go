@@ -46,6 +46,46 @@ func TestTransformOptions(t *testing.T) {
 			"-c:v libx264",
 		},
 		{
+			"nvenc constant quality is -cq, not -crf",
+			`{"video": {"codec": "hevc_nvenc", "pass": "crf", "crf": 24}}`,
+			"-c:v hevc_nvenc -rc vbr -cq 24",
+		},
+		{
+			"nvenc cbr",
+			`{"video": {"codec": "h264_nvenc", "pass": "cbr", "bitrate": "6000k"}}`,
+			"-c:v h264_nvenc -b:v 6000k -rc cbr",
+		},
+		{
+			"nvenc constant qp takes the crf field",
+			`{"video": {"codec": "hevc_nvenc", "pass": "constqp", "crf": "20"}}`,
+			"-c:v hevc_nvenc -rc constqp -qp 20",
+		},
+		{
+			"nvenc vbr leaves rate control to the encoder",
+			`{"video": {"codec": "hevc_nvenc", "pass": "1", "bitrate": "5M"}}`,
+			"-c:v hevc_nvenc -b:v 5M",
+		},
+		{
+			"nvenc settings",
+			`{"video": {"codec": "hevc_nvenc", "preset": "p6", "nvenc_multipass": "qres", "nvenc_aq": "both", "nvenc_lookahead": "32"}}`,
+			"-c:v hevc_nvenc -preset p6 -multipass qres -spatial-aq 1 -temporal-aq 1 -rc-lookahead 32",
+		},
+		{
+			"nvenc settings at their defaults",
+			`{"video": {"codec": "h264_nvenc", "nvenc_multipass": "disabled", "nvenc_aq": "none", "nvenc_lookahead": ""}}`,
+			"-c:v h264_nvenc",
+		},
+		{
+			"nvenc temporal aq and a numeric lookahead",
+			`{"video": {"codec": "h264_nvenc", "nvenc_aq": "temporal", "nvenc_lookahead": 20}}`,
+			"-c:v h264_nvenc -temporal-aq 1 -rc-lookahead 20",
+		},
+		{
+			"nvenc settings ignored for other encoders",
+			`{"video": {"codec": "libx264", "nvenc_multipass": "fullres", "nvenc_aq": "both", "nvenc_lookahead": "20"}}`,
+			"-c:v libx264",
+		},
+		{
 			"audio-only preset",
 			`{"video": {"codec": "none"}, "audio": {"codec": "libmp3lame", "quality": "192k", "sampleRate": "44100"}}`,
 			"-vn -c:a libmp3lame -ar 44100 -b:a 192k",
@@ -266,6 +306,22 @@ func TestNewEncodeRaw(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := strings.Join(optionArgs(t, e.Passes()[0]), " "); got != "-c:v libx264 -crf 20" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// NVENC has no two-command encode. New payloads never ask for one, but jobs
+// queued before ffmpeg-commander learned that may.
+func TestNvencSkipsTwoPass(t *testing.T) {
+	e, err := NewEncode("in.mp4", "out.mp4", `{"video": {"codec": "hevc_nvenc", "pass": "2", "bitrate": "5M"}}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+	if n := len(e.Passes()); n != 1 {
+		t.Fatalf("got %d passes, want 1", n)
+	}
+	if got := strings.Join(optionArgs(t, e.Passes()[0]), " "); got != "-c:v hevc_nvenc -b:v 5M" {
 		t.Errorf("got %q", got)
 	}
 }
